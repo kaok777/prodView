@@ -1,0 +1,493 @@
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../common/prisma.service';
+import { ValidationService } from '../common/validation.service';
+import { RateLimitService } from '../common/rate-limit.service';
+import { AuditService } from '../audit/audit.service';
+
+@Injectable()
+export class ProductsService {
+  constructor(
+    private prisma: PrismaService,
+    private validationService: ValidationService,
+    private rateLimitService: RateLimitService,
+    private auditService: AuditService,
+  ) {}
+
+  async getLatestProducts(limit: number) {
+    if (limit > 100) {
+      throw new BadRequestException('Limit cannot exceed 100');
+    }
+
+    return this.prisma.product.findMany({
+      where: {
+        status: 'PUBLISHED',
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+      include: {
+        categories: {
+          include: {
+            category: true,
+          },
+        },
+        useCases: {
+          include: {
+            useCase: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getProductById(productId: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+      include: {
+        categories: {
+          include: {
+            category: true,
+          },
+        },
+        useCases: {
+          include: {
+            useCase: true,
+          },
+        },
+      },
+    });
+
+    if (!product || product.status !== 'PUBLISHED') {
+      return null;
+    }
+
+    return product;
+  }
+
+  async searchProducts(keyword: string, page: number = 1, pageSize: number = 100, ip?: string) {
+    const rateLimitKey = `search:${ip || 'unknown'}`;
+    const rateCheck = await this.rateLimitService.checkRateLimit(
+      rateLimitKey,
+      60 * 1000,
+      30,
+    );
+
+    if (!rateCheck.allowed) {
+      throw new BadRequestException('Search rate limit exceeded. Please slow down.');
+    }
+
+    const validation = this.validationService.validateInput('text', keyword);
+    if (!validation.valid) {
+      throw new BadRequestException('Invalid search query');
+    }
+
+    if (keyword.length > 100) {
+      throw new BadRequestException('Search query too long');
+    }
+
+    await this.rateLimitService.recordAttempt(rateLimitKey, ip);
+
+    const trimmedKeyword = keyword.trim();
+    const skip = (page - 1) * pageSize;
+
+    const [products, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where: {
+          status: 'PUBLISHED',
+          OR: [
+            {
+              name: {
+                contains: trimmedKeyword,
+                mode: 'insensitive',
+              },
+            },
+            {
+              description: {
+                contains: trimmedKeyword,
+                mode: 'insensitive',
+              },
+            },
+          ],
+        },
+        skip,
+        take: Math.min(pageSize, 100),
+        include: {
+          categories: {
+            include: {
+              category: true,
+            },
+          },
+          useCases: {
+            include: {
+              useCase: true,
+            },
+          },
+        },
+      }),
+      this.prisma.product.count({
+        where: {
+          status: 'PUBLISHED',
+          OR: [
+            {
+              name: {
+                contains: trimmedKeyword,
+                mode: 'insensitive',
+              },
+            },
+            {
+              description: {
+                contains: trimmedKeyword,
+                mode: 'insensitive',
+              },
+            },
+          ],
+        },
+      }),
+    ]);
+
+    return {
+      products,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  async getProductsByCategory(categoryId: string, page: number = 1, pageSize: number = 100) {
+    const skip = (page - 1) * pageSize;
+
+    const [products, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where: {
+          status: 'PUBLISHED',
+          categories: {
+            some: {
+              categoryId,
+            },
+          },
+        },
+        skip,
+        take: Math.min(pageSize, 100),
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          categories: {
+            include: {
+              category: true,
+            },
+          },
+          useCases: {
+            include: {
+              useCase: true,
+            },
+          },
+        },
+      }),
+      this.prisma.product.count({
+        where: {
+          status: 'PUBLISHED',
+          categories: {
+            some: {
+              categoryId,
+            },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      products,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  async getProductsByUseCase(useCaseId: string, page: number = 1, pageSize: number = 100) {
+    const skip = (page - 1) * pageSize;
+
+    const [products, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where: {
+          status: 'PUBLISHED',
+          useCases: {
+            some: {
+              useCaseId,
+            },
+          },
+        },
+        skip,
+        take: Math.min(pageSize, 100),
+        orderBy: {
+          createdAt: 'desc',
+        },
+        include: {
+          categories: {
+            include: {
+              category: true,
+            },
+          },
+          useCases: {
+            include: {
+              useCase: true,
+            },
+          },
+        },
+      }),
+      this.prisma.product.count({
+        where: {
+          status: 'PUBLISHED',
+          useCases: {
+            some: {
+              useCaseId,
+            },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      products,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  }
+
+  async getAllProductsForAdmin(adminId: string, limit: number = 100) {
+    const maxLimit = Math.min(limit, 1000);
+
+    return this.prisma.product.findMany({
+      take: maxLimit,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        categories: {
+          include: {
+            category: true,
+          },
+        },
+        useCases: {
+          include: {
+            useCase: true,
+          },
+        },
+      },
+    });
+  }
+
+  async createProduct(
+    adminId: string,
+    data: {
+      name: string;
+      description: string;
+      affiliateUrl: string;
+      categories: string[];
+      useCases: string[];
+      images: string[];
+    },
+  ) {
+    const nameValidation = this.validationService.validateInput('text', data.name);
+    if (!nameValidation.valid) {
+      throw new BadRequestException(`Invalid name: ${nameValidation.error}`);
+    }
+
+    const descValidation = this.validationService.validateInput('text', data.description);
+    if (!descValidation.valid) {
+      throw new BadRequestException(`Invalid description: ${descValidation.error}`);
+    }
+
+    const urlValidation = this.validationService.validateInput('url', data.affiliateUrl);
+    if (!urlValidation.valid) {
+      throw new BadRequestException(`Invalid URL: ${urlValidation.error}`);
+    }
+
+    if (data.categories.length > 10) {
+      throw new BadRequestException('Too many categories');
+    }
+
+    if (data.useCases.length > 10) {
+      throw new BadRequestException('Too many use cases');
+    }
+
+    if (data.images.length > 20) {
+      throw new BadRequestException('Too many images');
+    }
+
+    const product = await this.prisma.product.create({
+      data: {
+        name: data.name.trim(),
+        description: data.description.trim(),
+        affiliateUrl: data.affiliateUrl.trim(),
+        images: data.images,
+        status: 'DRAFT',
+        createdById: adminId,
+        updatedById: adminId,
+        categories: {
+          create: data.categories.map((categoryId) => ({
+            categoryId,
+          })),
+        },
+        useCases: {
+          create: data.useCases.map((useCaseId) => ({
+            useCaseId,
+          })),
+        },
+      },
+      include: {
+        categories: {
+          include: {
+            category: true,
+          },
+        },
+        useCases: {
+          include: {
+            useCase: true,
+          },
+        },
+      },
+    });
+
+    await this.auditService.logAction(
+      adminId,
+      'create_product',
+      'product',
+      product.id,
+      { name: data.name },
+    );
+
+    return product;
+  }
+
+  async updateProduct(
+    adminId: string,
+    productId: string,
+    data: {
+      name: string;
+      description: string;
+      affiliateUrl: string;
+      categories: string[];
+      useCases: string[];
+      images: string[];
+      status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+    },
+  ) {
+    const existingProduct = await this.prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!existingProduct) {
+      throw new NotFoundException('Product not found');
+    }
+
+    const nameValidation = this.validationService.validateInput('text', data.name);
+    if (!nameValidation.valid) {
+      throw new BadRequestException(`Invalid name: ${nameValidation.error}`);
+    }
+
+    const descValidation = this.validationService.validateInput('text', data.description);
+    if (!descValidation.valid) {
+      throw new BadRequestException(`Invalid description: ${descValidation.error}`);
+    }
+
+    const urlValidation = this.validationService.validateInput('url', data.affiliateUrl);
+    if (!urlValidation.valid) {
+      throw new BadRequestException(`Invalid URL: ${urlValidation.error}`);
+    }
+
+    if (data.categories.length > 10) {
+      throw new BadRequestException('Too many categories');
+    }
+
+    if (data.useCases.length > 10) {
+      throw new BadRequestException('Too many use cases');
+    }
+
+    if (data.images.length > 20) {
+      throw new BadRequestException('Too many images');
+    }
+
+    await this.prisma.productCategory.deleteMany({
+      where: { productId },
+    });
+
+    await this.prisma.productUseCase.deleteMany({
+      where: { productId },
+    });
+
+    const product = await this.prisma.product.update({
+      where: { id: productId },
+      data: {
+        name: data.name.trim(),
+        description: data.description.trim(),
+        affiliateUrl: data.affiliateUrl.trim(),
+        images: data.images,
+        status: data.status,
+        updatedById: adminId,
+        categories: {
+          create: data.categories.map((categoryId) => ({
+            categoryId,
+          })),
+        },
+        useCases: {
+          create: data.useCases.map((useCaseId) => ({
+            useCaseId,
+          })),
+        },
+      },
+      include: {
+        categories: {
+          include: {
+            category: true,
+          },
+        },
+        useCases: {
+          include: {
+            useCase: true,
+          },
+        },
+      },
+    });
+
+    await this.auditService.logAction(
+      adminId,
+      'update_product',
+      'product',
+      productId,
+      {
+        name: data.name,
+        previousName: existingProduct.name,
+      },
+    );
+
+    return product;
+  }
+
+  async deleteProduct(adminId: string, productId: string) {
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId },
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    await this.prisma.product.delete({
+      where: { id: productId },
+    });
+
+    await this.auditService.logAction(
+      adminId,
+      'delete_product',
+      'product',
+      productId,
+      { name: product.name },
+    );
+  }
+}

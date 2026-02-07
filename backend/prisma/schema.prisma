@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  affiliateUrl String
+  images      String[]
+  status      ProductStatus @default(DRAFT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String
+  updatedById String
+
+  createdBy   AdminUser @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  updatedBy   AdminUser @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
+
+  categories  ProductCategory[]
+  useCases    ProductUseCase[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([status, createdAt])
+  @@map("products")
+}
+
+model Category {
+  id               String   @id @default(uuid())
+  name             String
+  parentCategoryId String?
+  createdAt        DateTime @default(now())
+
+  parentCategory   Category?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  childCategories  Category[] @relation("CategoryHierarchy")
+  products         ProductCategory[]
+
+  @@index([name])
+  @@index([parentCategoryId])
+  @@index([createdAt])
+  @@map("categories")
+}
+
+model UseCase {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  products  ProductUseCase[]
+
+  @@index([name])
+  @@index([createdAt])
+  @@map("use_cases")
+}
+
+model ProductCategory {
+  productId  String
+  categoryId String
+
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([productId, categoryId])
+  @@map("product_categories")
+}
+
+model ProductUseCase {
+  productId String
+  useCaseId String
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  useCase   UseCase @relation(fields: [useCaseId], references: [id], onDelete: Cascade)
+
+  @@id([productId, useCaseId])
+  @@map("product_use_cases")
+}
+
+model AdminUser {
+  id          String    @id @default(uuid())
+  email       String    @unique
+  passwordHash String
+  role        String    @default("admin")
+  createdAt   DateTime  @default(now())
+  lastLoginAt DateTime?
+
+  createdProducts Product[] @relation("ProductCreatedBy")
+  updatedProducts Product[] @relation("ProductUpdatedBy")
+  auditLogs       AuditLog[]
+  passwordResets  PasswordReset[]
+
+  @@index([email])
+  @@index([createdAt])
+  @@index([lastLoginAt])
+  @@map("admin_users")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  adminUserId String?
+  action      String
+  entityType  String
+  entityId    String
+  timestamp   DateTime @default(now())
+  metadata    Json?
+
+  adminUser   AdminUser? @relation(fields: [adminUserId], references: [id])
+
+  @@index([adminUserId])
+  @@index([entityType, entityId])
+  @@index([timestamp])
+  @@index([adminUserId, timestamp])
+  @@index([entityType, entityId, timestamp])
+  @@map("audit_logs")
+}
+
+model PasswordReset {
+  id         String   @id @default(uuid())
+  adminId    String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  used       Boolean  @default(false)
+
+  admin      AdminUser @relation(fields: [adminId], references: [id])
+
+  @@index([tokenHash])
+  @@index([adminId])
+  @@index([expiresAt])
+  @@map("password_resets")
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(uuid())
+  eventType  String
+  entityId   String?
+  metadata   Json?
+  timestamp  DateTime @default(now())
+  sessionId  String
+
+  @@index([eventType])
+  @@index([timestamp])
+  @@index([entityId])
+  @@index([eventType, timestamp])
+  @@map("analytics_events")
+}
+
+model RateLimit {
+  id        String   @id @default(uuid())
+  key       String
+  timestamp DateTime @default(now())
+  ip        String?
+  userAgent String?
+
+  @@index([key])
+  @@index([timestamp])
+  @@index([key, timestamp])
+  @@map("rate_limits")
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
