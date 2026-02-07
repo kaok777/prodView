@@ -1,0 +1,13 @@
+Contact: security@prodview.com
+Expires: 2025-12-31T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://prodview.com/.well-known/security.txt
+
+# Security Policy
+# Report security vulnerabilities to security@prodview.com
+# Please include detailed steps to reproduce the issue
+# We aim to respond within 24 hours
+
+# Scope
+# In scope: All ProdView application endpoints and functionality
+# Out of scope: Third-party affiliate sites and services
