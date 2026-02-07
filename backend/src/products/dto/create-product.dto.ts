@@ -42,25 +42,18 @@ export class CreateProductDto {
   @IsEnum(ProductStatus, { message: 'Status must be DRAFT, PUBLISHED, or ARCHIVED' })
   status?: ProductStatus;
 
-  @IsOptional()
   @IsArray({ message: 'Category IDs must be an array' })
   @IsUUID('4', { each: true, message: 'Each category ID must be a valid UUID' })
   @ArrayMaxSize(10, { message: 'Cannot assign more than 10 categories' })
-  categoryIds?: string[];
+  categories: string[];
 
-  @IsOptional()
   @IsArray({ message: 'Use case IDs must be an array' })
   @IsUUID('4', { each: true, message: 'Each use case ID must be a valid UUID' })
   @ArrayMaxSize(10, { message: 'Cannot assign more than 10 use cases' })
-  useCaseIds?: string[];
+  useCases: string[];
 
-  @IsOptional()
   @IsArray({ message: 'Images must be an array' })
   @IsString({ each: true, message: 'Each image path must be a string' })
-  @ArrayMaxSize(10, { message: 'Cannot upload more than 10 images' })
-  @Matches(/^\/uploads\/[a-zA-Z0-9\-_]+\.(jpg|jpeg|png|gif|webp)$/, {
-    each: true,
-    message: 'Each image path must be a valid upload path',
-  })
-  images?: string[];
+  @ArrayMaxSize(20, { message: 'Cannot upload more than 20 images' })
+  images: string[];
 }

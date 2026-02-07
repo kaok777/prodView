@@ -369,12 +369,12 @@ export class ProductsService {
     adminId: string,
     productId: string,
     data: {
-      name: string;
-      description: string;
-      affiliateUrl: string;
-      categories: string[];
-      useCases: string[];
-      images: string[];
+      name?: string;
+      description?: string;
+      affiliateUrl?: string;
+      categories?: string[];
+      useCases?: string[];
+      images?: string[];
       status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
     },
   ) {
@@ -386,61 +386,92 @@ export class ProductsService {
       throw new NotFoundException('Product not found');
     }
 
-    const nameValidation = this.validationService.validateInput('text', data.name);
-    if (!nameValidation.valid) {
-      throw new BadRequestException(`Invalid name: ${nameValidation.error}`);
+    if (data.name !== undefined) {
+      const nameValidation = this.validationService.validateInput('text', data.name);
+      if (!nameValidation.valid) {
+        throw new BadRequestException(`Invalid name: ${nameValidation.error}`);
+      }
     }
 
-    const descValidation = this.validationService.validateInput('text', data.description);
-    if (!descValidation.valid) {
-      throw new BadRequestException(`Invalid description: ${descValidation.error}`);
+    if (data.description !== undefined) {
+      const descValidation = this.validationService.validateInput('text', data.description);
+      if (!descValidation.valid) {
+        throw new BadRequestException(`Invalid description: ${descValidation.error}`);
+      }
     }
 
-    const urlValidation = this.validationService.validateInput('url', data.affiliateUrl);
-    if (!urlValidation.valid) {
-      throw new BadRequestException(`Invalid URL: ${urlValidation.error}`);
+    if (data.affiliateUrl !== undefined) {
+      const urlValidation = this.validationService.validateInput('url', data.affiliateUrl);
+      if (!urlValidation.valid) {
+        throw new BadRequestException(`Invalid URL: ${urlValidation.error}`);
+      }
     }
 
-    if (data.categories.length > 10) {
+    if (data.categories !== undefined && data.categories.length > 10) {
       throw new BadRequestException('Too many categories');
     }
 
-    if (data.useCases.length > 10) {
+    if (data.useCases !== undefined && data.useCases.length > 10) {
       throw new BadRequestException('Too many use cases');
     }
 
-    if (data.images.length > 20) {
+    if (data.images !== undefined && data.images.length > 20) {
       throw new BadRequestException('Too many images');
     }
 
-    await this.prisma.productCategory.deleteMany({
-      where: { productId },
-    });
+    // Only update relations if provided
+    if (data.categories !== undefined) {
+      await this.prisma.productCategory.deleteMany({
+        where: { productId },
+      });
+    }
 
-    await this.prisma.productUseCase.deleteMany({
-      where: { productId },
-    });
+    if (data.useCases !== undefined) {
+      await this.prisma.productUseCase.deleteMany({
+        where: { productId },
+      });
+    }
+
+    // Build update data object
+    const updateData: any = {
+      updatedById: adminId,
+    };
+
+    if (data.name !== undefined) {
+      updateData.name = data.name.trim();
+    }
+    if (data.description !== undefined) {
+      updateData.description = data.description.trim();
+    }
+    if (data.affiliateUrl !== undefined) {
+      updateData.affiliateUrl = data.affiliateUrl.trim();
+    }
+    if (data.images !== undefined) {
+      updateData.images = data.images;
+    }
+    if (data.status !== undefined) {
+      updateData.status = data.status;
+    }
+
+    if (data.categories !== undefined) {
+      updateData.categories = {
+        create: data.categories.map((categoryId) => ({
+          categoryId,
+        })),
+      };
+    }
+
+    if (data.useCases !== undefined) {
+      updateData.useCases = {
+        create: data.useCases.map((useCaseId) => ({
+          useCaseId,
+        })),
+      };
+    }
 
     const product = await this.prisma.product.update({
       where: { id: productId },
-      data: {
-        name: data.name.trim(),
-        description: data.description.trim(),
-        affiliateUrl: data.affiliateUrl.trim(),
-        images: data.images,
-        status: data.status,
-        updatedById: adminId,
-        categories: {
-          create: data.categories.map((categoryId) => ({
-            categoryId,
-          })),
-        },
-        useCases: {
-          create: data.useCases.map((useCaseId) => ({
-            useCaseId,
-          })),
-        },
-      },
+      data: updateData,
       include: {
         categories: {
           include: {
@@ -461,7 +492,7 @@ export class ProductsService {
       'product',
       productId,
       {
-        name: data.name,
+        name: data.name || existingProduct.name,
         previousName: existingProduct.name,
       },
     );
