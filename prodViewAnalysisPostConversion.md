@@ -173,7 +173,7 @@ Located in: `convex/schema.ts`
 - **Admin Authentication:** adminAuth.ts with custom login action
 - **Session Management:** Placeholder implementation (incomplete)
 - **Password Hashing:** bcrypt with 12 salt rounds
-- **Hardcoded Credentials:** `vibrationconnect@gmail.com` / `Cxserfd345;`
+- **Hardcoded Credentials:** `vibrationconnect@gmail.com` / `Cxserfd345!`
 
 ---
 
@@ -383,7 +383,7 @@ ProdView is an **affiliate product catalog platform** that allows:
 
 **Default Credentials:**
 - Email: `vibrationconnect@gmail.com` (NestJS uses env var ADMIN_EMAIL)
-- Password: `Cxserfd345;` (NestJS uses env var ADMIN_PASSWORD)
+- Password: `Cxserfd345!` (NestJS uses env var ADMIN_PASSWORD)
 
 **CRITICAL SECURITY ISSUE:** Default credentials may be hardcoded or in environment variables
 
@@ -1358,7 +1358,7 @@ Key differences from PostgreSQL models:
 **NestJS Backend** (`backend/src/auth/auth.service.ts:113-114`):
 ```typescript
 const defaultEmail = 'vibrationconnect@gmail.com';
-const defaultPassword = 'Cxserfd345;';
+const defaultPassword = 'Cxserfd345!';
 ```
 
 **Backend .env.example:**

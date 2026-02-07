@@ -13,7 +13,7 @@ async function main() {
   }
 
   const defaultEmail = 'vibrationconnect@gmail.com';
-  const defaultPassword = 'Cxserfd345;';
+  const defaultPassword = 'Cxserfd345!';
   const saltRounds = 12;
   const passwordHash = await bcrypt.hash(defaultPassword, saltRounds);
 

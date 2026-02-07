@@ -579,7 +579,7 @@ The application uses 9 tables total:
 - Passwords hashed with bcrypt (12 rounds)
 - Email validated on creation
 - Password strength enforced (8-128 chars, mixed case, number, special char)
-- **DEFAULT ADMIN:** vibrationconnect@gmail.com / Cxserfd345; (hardcoded in setupFirstAdmin)
+- **DEFAULT ADMIN:** vibrationconnect@gmail.com / Cxserfd345! (hardcoded in setupFirstAdmin)
 
 ---
 
@@ -1152,7 +1152,7 @@ These tables handle the Convex Auth system for public users:
 - **Returns:** `{ adminId, email, password, message }`
 - **Logic:**
   - Checks if any admins exist (fails if yes)
-  - Creates default admin: vibrationconnect@gmail.com / Cxserfd345;
+  - Creates default admin: vibrationconnect@gmail.com / Cxserfd345!
   - Returns credentials
 - **Used By:** Initial setup (one-time)
 - **SECURITY RISK:** Default credentials hardcoded
@@ -1262,7 +1262,7 @@ The admin authentication system does NOT use session tokens or JWT. Instead:
 Default admin credentials are hardcoded in `convex/adminAuth.ts:201-202`:
 ```typescript
 const defaultEmail = "vibrationconnect@gmail.com";
-const defaultPassword = "Cxserfd345;";
+const defaultPassword = "Cxserfd345!";
 ```
 
 **Impact:**

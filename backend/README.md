@@ -51,7 +51,7 @@ npm run db:seed
 
 **Default Admin Credentials:**
 - Email: `vibrationconnect@gmail.com`
-- Password: `Cxserfd345;`
+- Password: `Cxserfd345!`
 
 ### 4. Start Development Server
 
@@ -118,7 +118,7 @@ All admin endpoints require JWT authentication.
 ```bash
 curl -X POST http://localhost:3000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"vibrationconnect@gmail.com","password":"Cxserfd345;"}'
+  -d '{"email":"vibrationconnect@gmail.com","password":"Cxserfd345!"}'
 ```
 
 **Response:**
