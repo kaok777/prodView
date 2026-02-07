@@ -8,7 +8,9 @@
       "Bash(npx prisma generate:*)",
       "Bash(curl:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx ts-node:*)"
+      "Bash(npx ts-node:*)",
+      "Bash(npx prisma migrate:*)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": []

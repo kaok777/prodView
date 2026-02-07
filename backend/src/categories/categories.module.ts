@@ -3,9 +3,10 @@ import { CategoriesController } from './categories.controller';
 import { CategoriesService } from './categories.service';
 import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { CacheService } from '../common/cache.service';
 
 @Module({
   controllers: [CategoriesController],
-  providers: [CategoriesService, PrismaService, AuditService],
+  providers: [CategoriesService, PrismaService, AuditService, CacheService],
 })
 export class CategoriesModule {}

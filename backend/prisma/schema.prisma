@@ -68,6 +68,8 @@ model ProductCategory {
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@id([productId, categoryId])
+  @@index([categoryId])
+  @@index([productId])
   @@map("product_categories")
 }
 
@@ -79,6 +81,8 @@ model ProductUseCase {
   useCase   UseCase @relation(fields: [useCaseId], references: [id], onDelete: Cascade)
 
   @@id([productId, useCaseId])
+  @@index([useCaseId])
+  @@index([productId])
   @@map("product_use_cases")
 }
 

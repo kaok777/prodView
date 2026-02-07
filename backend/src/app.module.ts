@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
 import { ProductsModule } from './products/products.module';
@@ -12,12 +13,14 @@ import { UploadModule } from './upload/upload.module';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { PrismaService } from './common/prisma.service';
+import { CacheService } from './common/cache.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
@@ -34,6 +37,7 @@ import { PrismaService } from './common/prisma.service';
   controllers: [AppController],
   providers: [
     PrismaService,
+    CacheService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
@@ -43,5 +47,6 @@ import { PrismaService } from './common/prisma.service';
       useClass: RolesGuard,
     },
   ],
+  exports: [CacheService],
 })
 export class AppModule {}

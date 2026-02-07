@@ -5,6 +5,7 @@ import { PrismaService } from '../common/prisma.service';
 import { ValidationService } from '../common/validation.service';
 import { RateLimitService } from '../common/rate-limit.service';
 import { AuditService } from '../audit/audit.service';
+import { CacheService } from '../common/cache.service';
 
 @Module({
   controllers: [ProductsController],
@@ -14,6 +15,7 @@ import { AuditService } from '../audit/audit.service';
     ValidationService,
     RateLimitService,
     AuditService,
+    CacheService,
   ],
 })
 export class ProductsModule {}

@@ -1,20 +1,33 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { CacheService } from '../common/cache.service';
 
 @Injectable()
 export class UseCasesService {
+  private readonly CACHE_TTL = 600000; // 10 minutes
+
   constructor(
     private prisma: PrismaService,
     private auditService: AuditService,
+    private cacheService: CacheService,
   ) {}
 
   async getAllUseCases() {
-    return this.prisma.useCase.findMany({
+    const cacheKey = 'all_use_cases';
+    const cached = this.cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const useCases = await this.prisma.useCase.findMany({
       orderBy: {
         name: 'asc',
       },
     });
+
+    this.cacheService.set(cacheKey, useCases, this.CACHE_TTL);
+    return useCases;
   }
 
   async getUseCaseById(useCaseId: string) {
@@ -37,6 +50,9 @@ export class UseCasesService {
       useCase.id,
       { name },
     );
+
+    // Invalidate use cases cache
+    this.cacheService.delete('all_use_cases');
 
     return useCase;
   }

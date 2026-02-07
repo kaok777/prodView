@@ -3,14 +3,23 @@ import { PrismaService } from '../common/prisma.service';
 import { ValidationService } from '../common/validation.service';
 import { RateLimitService } from '../common/rate-limit.service';
 import { AuditService } from '../audit/audit.service';
+import { CacheService } from '../common/cache.service';
 
 @Injectable()
 export class ProductsService {
+  private readonly CACHE_TTL = {
+    LATEST_PRODUCTS: 180000, // 3 minutes
+    PRODUCT_DETAIL: 300000,  // 5 minutes
+    CATEGORY_PRODUCTS: 240000, // 4 minutes
+    USECASE_PRODUCTS: 240000, // 4 minutes
+  };
+
   constructor(
     private prisma: PrismaService,
     private validationService: ValidationService,
     private rateLimitService: RateLimitService,
     private auditService: AuditService,
+    private cacheService: CacheService,
   ) {}
 
   async getLatestProducts(limit: number) {
@@ -18,7 +27,13 @@ export class ProductsService {
       throw new BadRequestException('Limit cannot exceed 100');
     }
 
-    return this.prisma.product.findMany({
+    const cacheKey = `latest_products:${limit}`;
+    const cached = this.cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const products = await this.prisma.product.findMany({
       where: {
         status: 'PUBLISHED',
       },
@@ -39,9 +54,18 @@ export class ProductsService {
         },
       },
     });
+
+    this.cacheService.set(cacheKey, products, this.CACHE_TTL.LATEST_PRODUCTS);
+    return products;
   }
 
   async getProductById(productId: string) {
+    const cacheKey = `product:${productId}`;
+    const cached = this.cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const product = await this.prisma.product.findUnique({
       where: { id: productId },
       include: {
@@ -62,6 +86,7 @@ export class ProductsService {
       return null;
     }
 
+    this.cacheService.set(cacheKey, product, this.CACHE_TTL.PRODUCT_DETAIL);
     return product;
   }
 
@@ -156,6 +181,12 @@ export class ProductsService {
   }
 
   async getProductsByCategory(categoryId: string, page: number = 1, pageSize: number = 100) {
+    const cacheKey = `category_products:${categoryId}:${page}:${pageSize}`;
+    const cached = this.cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const skip = (page - 1) * pageSize;
 
     const [products, total] = await Promise.all([
@@ -198,16 +229,25 @@ export class ProductsService {
       }),
     ]);
 
-    return {
+    const result = {
       products,
       total,
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     };
+
+    this.cacheService.set(cacheKey, result, this.CACHE_TTL.CATEGORY_PRODUCTS);
+    return result;
   }
 
   async getProductsByUseCase(useCaseId: string, page: number = 1, pageSize: number = 100) {
+    const cacheKey = `usecase_products:${useCaseId}:${page}:${pageSize}`;
+    const cached = this.cacheService.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const skip = (page - 1) * pageSize;
 
     const [products, total] = await Promise.all([
@@ -250,13 +290,16 @@ export class ProductsService {
       }),
     ]);
 
-    return {
+    const result = {
       products,
       total,
       page,
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     };
+
+    this.cacheService.set(cacheKey, result, this.CACHE_TTL.USECASE_PRODUCTS);
+    return result;
   }
 
   async getAllProductsForAdmin(adminId: string, limit: number = 100) {
@@ -362,7 +405,21 @@ export class ProductsService {
       { name: data.name },
     );
 
+    // Invalidate relevant caches
+    this.invalidateProductCaches();
+
     return product;
+  }
+
+  /**
+   * Invalidate all product-related caches
+   * Called after any product mutation (create, update, delete)
+   */
+  private invalidateProductCaches(): void {
+    this.cacheService.deletePattern('latest_products');
+    this.cacheService.deletePattern('category_products');
+    this.cacheService.deletePattern('usecase_products');
+    this.cacheService.deletePattern('product:');
   }
 
   async updateProduct(
@@ -497,6 +554,9 @@ export class ProductsService {
       },
     );
 
+    // Invalidate relevant caches
+    this.invalidateProductCaches();
+
     return product;
   }
 
@@ -520,5 +580,8 @@ export class ProductsService {
       productId,
       { name: product.name },
     );
+
+    // Invalidate relevant caches
+    this.invalidateProductCaches();
   }
 }
