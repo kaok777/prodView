@@ -1,17 +1,37 @@
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ProductImage } from "./ProductImage";
+import api from "../lib/api";
 
 export function RightSidebar() {
-  const latestProducts = useQuery(api.products.getLatestProducts, { limit: 10 });
+  const [latestProducts, setLatestProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLatestProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/products/latest', {
+          params: { limit: 10 }
+        });
+        setLatestProducts(response.data);
+      } catch (error) {
+        console.error('Failed to fetch latest products:', error);
+        setLatestProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLatestProducts();
+  }, []);
 
   return (
     <aside className="w-80 bg-card border-l min-h-[calc(100vh-4rem)] p-4">
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">Latest Products</h3>
-        
-        {latestProducts === undefined ? (
+
+        {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="animate-pulse">
@@ -25,16 +45,16 @@ export function RightSidebar() {
           <div className="space-y-3">
             {latestProducts.map((product) => (
               <Link
-                key={product._id}
-                to={`/products/${product._id}`}
+                key={product.id}
+                to={`/products/${product.id}`}
                 className="block group"
               >
                 <div className="bg-background rounded-lg p-3 border hover:shadow-md transition-shadow">
                   <div className="flex gap-3">
                     <div className="w-16 h-16 bg-muted rounded-lg flex-shrink-0 overflow-hidden">
-                      {product.images[0] && (
-                        <ProductImage 
-                          storageId={product.images[0]}
+                      {product.images && product.images[0] && (
+                        <ProductImage
+                          imagePath={product.images[0]}
                           alt={product.name}
                           className="w-full h-full object-cover"
                         />

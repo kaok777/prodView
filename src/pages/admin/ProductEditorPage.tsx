@@ -1,79 +1,82 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 import { toast } from "sonner";
-import { Upload, X, Save, Eye } from "lucide-react";
-import { Id } from "../../../convex/_generated/dataModel";
+import { Upload, X, Save } from "lucide-react";
 import { ProductImage } from "../../components/ProductImage";
-import { getAdminSession } from "../../utils/security";
+import api from "../../lib/api";
 
 export function ProductEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
-  const session = getAdminSession();
 
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     affiliateUrl: "",
-    categories: [] as Id<"categories">[],
-    useCases: [] as Id<"useCases">[],
-    images: [] as Id<"_storage">[]
+    categoryIds: [] as string[],
+    useCaseIds: [] as string[],
+    images: [] as string[],
+    status: "DRAFT" as "DRAFT" | "PUBLISHED" | "ARCHIVED"
   });
 
-  const product = useQuery(
-    api.products.getProductById,
-    isEditing ? { productId: id as Id<"products"> } : "skip"
-  );
-  
-  const categories = useQuery(api.categories.getAllCategories);
-  const useCases = useQuery(api.useCases.getAllUseCases);
-  
-  const createProduct = useMutation(api.products.createProduct);
-  const updateProduct = useMutation(api.products.updateProduct);
-  const generateUploadUrl = useMutation(api.products.generateUploadUrl);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [useCases, setUseCases] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    if (product && isEditing) {
-      setFormData({
-        name: product.name,
-        description: product.description,
-        affiliateUrl: product.affiliateUrl,
-        categories: product.categories,
-        useCases: product.useCases,
-        images: product.images
-      });
-    }
-  }, [product, isEditing]);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [categoriesRes, useCasesRes] = await Promise.all([
+          api.get('/categories'),
+          api.get('/use-cases')
+        ]);
+
+        setCategories(categoriesRes.data);
+        setUseCases(useCasesRes.data);
+
+        if (isEditing && id) {
+          const productRes = await api.get(`/products/${id}`);
+          const product = productRes.data;
+
+          setFormData({
+            name: product.name,
+            description: product.description,
+            affiliateUrl: product.affiliateUrl,
+            categoryIds: product.categories?.map((c: any) => c.category?.id || c.id) || [],
+            useCaseIds: product.useCases?.map((u: any) => u.useCase?.id || u.id) || [],
+            images: product.images || [],
+            status: product.status || "DRAFT"
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        toast.error("Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id, isEditing]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!session) {
-      toast.error("Not authenticated");
-      return;
-    }
-    
+
     try {
-      if (isEditing) {
-        await updateProduct({
-          adminId: session.adminId as any,
-          productId: id as Id<"products">,
-          ...formData
-        });
+      if (isEditing && id) {
+        await api.put(`/products/${id}`, formData);
         toast.success("Product updated successfully");
       } else {
-        await createProduct({
-          adminId: session.adminId as any,
-          ...formData
-        });
+        await api.post('/products', formData);
         toast.success("Product created successfully");
       }
       navigate("/admin");
-    } catch (error) {
-      toast.error("Failed to save product");
+    } catch (error: any) {
+      console.error('Failed to save product:', error);
+      toast.error(error.response?.data?.message || "Failed to save product");
     }
   };
 
@@ -81,35 +84,28 @@ export function ProductEditorPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!session) {
-      toast.error("Not authenticated");
-      return;
-    }
-
     try {
-      const uploadUrl = await generateUploadUrl({
-        adminId: session.adminId as any
-      });
-      
-      const result = await fetch(uploadUrl, {
-        method: "POST",
-        headers: { "Content-Type": file.type },
-        body: file,
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await api.post('/upload/image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
-      if (!result.ok) {
-        throw new Error("Upload failed");
-      }
-
-      const { storageId } = await result.json();
       setFormData(prev => ({
         ...prev,
-        images: [...prev.images, storageId]
+        images: [...prev.images, response.data.path]
       }));
-      
+
       toast.success("Image uploaded successfully");
-    } catch (error) {
-      toast.error("Failed to upload image");
+    } catch (error: any) {
+      console.error('Failed to upload image:', error);
+      toast.error(error.response?.data?.message || "Failed to upload image");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -119,6 +115,32 @@ export function ProductEditorPage() {
       images: prev.images.filter((_, i) => i !== index)
     }));
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="h-10 bg-muted rounded w-48 animate-pulse"></div>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i}>
+                <div className="h-4 bg-muted rounded w-24 mb-2 animate-pulse"></div>
+                <div className="h-10 bg-muted rounded animate-pulse"></div>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-4">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i}>
+                <div className="h-4 bg-muted rounded w-24 mb-2 animate-pulse"></div>
+                <div className="h-32 bg-muted rounded animate-pulse"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -182,6 +204,21 @@ export function ProductEditorPage() {
                 placeholder="https://example.com/product"
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Status *
+              </label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="DRAFT">Draft</option>
+                <option value="PUBLISHED">Published</option>
+                <option value="ARCHIVED">Archived</option>
+              </select>
+            </div>
           </div>
 
           {/* Categories & Use Cases */}
@@ -191,21 +228,21 @@ export function ProductEditorPage() {
                 Categories
               </label>
               <div className="space-y-2 max-h-40 overflow-y-auto border border-border rounded-lg p-2">
-                {categories?.map((category) => (
-                  <label key={category._id} className="flex items-center gap-2">
+                {categories.map((category) => (
+                  <label key={category.id} className="flex items-center gap-2">
                     <input
                       type="checkbox"
-                      checked={formData.categories.includes(category._id)}
+                      checked={formData.categoryIds.includes(category.id)}
                       onChange={(e) => {
                         if (e.target.checked) {
                           setFormData(prev => ({
                             ...prev,
-                            categories: [...prev.categories, category._id]
+                            categoryIds: [...prev.categoryIds, category.id]
                           }));
                         } else {
                           setFormData(prev => ({
                             ...prev,
-                            categories: prev.categories.filter(id => id !== category._id)
+                            categoryIds: prev.categoryIds.filter(id => id !== category.id)
                           }));
                         }
                       }}
@@ -222,21 +259,21 @@ export function ProductEditorPage() {
                 Use Cases
               </label>
               <div className="space-y-2 max-h-40 overflow-y-auto border border-border rounded-lg p-2">
-                {useCases?.map((useCase) => (
-                  <label key={useCase._id} className="flex items-center gap-2">
+                {useCases.map((useCase) => (
+                  <label key={useCase.id} className="flex items-center gap-2">
                     <input
                       type="checkbox"
-                      checked={formData.useCases.includes(useCase._id)}
+                      checked={formData.useCaseIds.includes(useCase.id)}
                       onChange={(e) => {
                         if (e.target.checked) {
                           setFormData(prev => ({
                             ...prev,
-                            useCases: [...prev.useCases, useCase._id]
+                            useCaseIds: [...prev.useCaseIds, useCase.id]
                           }));
                         } else {
                           setFormData(prev => ({
                             ...prev,
-                            useCases: prev.useCases.filter(id => id !== useCase._id)
+                            useCaseIds: prev.useCaseIds.filter(id => id !== useCase.id)
                           }));
                         }
                       }}
@@ -257,25 +294,26 @@ export function ProductEditorPage() {
           </label>
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent transition-colors">
+              <label className={`flex items-center gap-2 px-4 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent transition-colors ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <Upload className="w-4 h-4" />
-                Upload Image
+                {uploading ? "Uploading..." : "Upload Image"}
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handleImageUpload}
+                  disabled={uploading}
                   className="hidden"
                 />
               </label>
             </div>
-            
+
             {formData.images.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {formData.images.map((imageId, index) => (
-                  <div key={imageId} className="relative group">
+                {formData.images.map((imagePath, index) => (
+                  <div key={index} className="relative group">
                     <div className="aspect-video bg-muted rounded-lg overflow-hidden">
                       <ProductImage
-                        storageId={imageId}
+                        imagePath={imagePath}
                         alt={`Product image ${index + 1}`}
                         className="w-full h-full object-cover"
                       />

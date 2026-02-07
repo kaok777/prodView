@@ -1,23 +1,72 @@
-import { useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Edit, Trash2, Eye, BarChart3 } from "lucide-react";
 import { ProductImage } from "../../components/ProductImage";
-import { getAdminSession } from "../../utils/security";
+import api from "../../lib/api";
 
 export function AdminDashboard() {
-  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published" | "archived">("all");
-  
-  const session = getAdminSession();
-  const products = useQuery(
-    api.products.getAllProductsForAdmin, 
-    session ? { adminId: session.adminId as any, limit: 100 } : "skip"
+  const [statusFilter, setStatusFilter] = useState<"all" | "DRAFT" | "PUBLISHED" | "ARCHIVED">("all");
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/products/admin/all', {
+          params: { limit: 100 }
+        });
+        setProducts(response.data);
+      } catch (error) {
+        console.error('Failed to fetch products:', error);
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  const handleDelete = async (productId: string) => {
+    if (!confirm('Are you sure you want to delete this product?')) {
+      return;
+    }
+
+    try {
+      await api.delete(`/products/${productId}`);
+      setProducts(prev => prev.filter(p => p.id !== productId));
+    } catch (error) {
+      console.error('Failed to delete product:', error);
+      alert('Failed to delete product. Please try again.');
+    }
+  };
+
+  const filteredProducts = products.filter(product =>
+    statusFilter === "all" || product.status === statusFilter
   );
 
-  const filteredProducts = products?.filter(product => 
-    statusFilter === "all" || product.status === statusFilter
-  ) || [];
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="h-10 bg-muted rounded w-48 animate-pulse"></div>
+          <div className="flex gap-2">
+            <div className="h-10 bg-muted rounded w-32 animate-pulse"></div>
+            <div className="h-10 bg-muted rounded w-32 animate-pulse"></div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-card rounded-lg border p-4">
+              <div className="h-4 bg-muted rounded w-24 mb-2 animate-pulse"></div>
+              <div className="h-8 bg-muted rounded w-16 animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -45,41 +94,41 @@ export function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-card rounded-lg border p-4">
           <h3 className="text-sm font-medium text-muted-foreground">Total Products</h3>
-          <p className="text-2xl font-bold">{products?.length || 0}</p>
+          <p className="text-2xl font-bold">{products.length}</p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <h3 className="text-sm font-medium text-muted-foreground">Published</h3>
           <p className="text-2xl font-bold">
-            {products?.filter(p => p.status === "published").length || 0}
+            {products.filter(p => p.status === "PUBLISHED").length}
           </p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <h3 className="text-sm font-medium text-muted-foreground">Drafts</h3>
           <p className="text-2xl font-bold">
-            {products?.filter(p => p.status === "draft").length || 0}
+            {products.filter(p => p.status === "DRAFT").length}
           </p>
         </div>
         <div className="bg-card rounded-lg border p-4">
           <h3 className="text-sm font-medium text-muted-foreground">Archived</h3>
           <p className="text-2xl font-bold">
-            {products?.filter(p => p.status === "archived").length || 0}
+            {products.filter(p => p.status === "ARCHIVED").length}
           </p>
         </div>
       </div>
 
       {/* Filters */}
       <div className="flex gap-2">
-        {["all", "draft", "published", "archived"].map((status) => (
+        {(["all", "DRAFT", "PUBLISHED", "ARCHIVED"] as const).map((status) => (
           <button
             key={status}
-            onClick={() => setStatusFilter(status as any)}
+            onClick={() => setStatusFilter(status)}
             className={`px-3 py-1 rounded-lg text-sm capitalize ${
               statusFilter === status
                 ? "bg-primary text-primary-foreground"
                 : "bg-accent hover:bg-accent/80"
             }`}
           >
-            {status}
+            {status === "all" ? "all" : status.toLowerCase()}
           </button>
         ))}
       </div>
@@ -97,67 +146,76 @@ export function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {filteredProducts.map((product) => (
-                <tr key={product._id} className="border-t">
-                  <td className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                        {product.images[0] && (
-                          <ProductImage
-                            storageId={product.images[0]}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                          />
-                        )}
-                      </div>
-                      <div>
-                        <h4 className="font-medium">{product.name}</h4>
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {product.description}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      product.status === "published" 
-                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                        : product.status === "draft"
-                        ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                        : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
-                    }`}>
-                      {product.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-sm text-muted-foreground">
-                    {new Date(product.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        to={`/products/${product._id}`}
-                        className="p-1 hover:bg-accent rounded"
-                        title="View"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Link>
-                      <Link
-                        to={`/admin/products/${product._id}/edit`}
-                        className="p-1 hover:bg-accent rounded"
-                        title="Edit"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Link>
-                      <button
-                        className="p-1 hover:bg-accent rounded text-destructive"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+              {filteredProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                    No products found.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredProducts.map((product) => (
+                  <tr key={product.id} className="border-t">
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                          {product.images && product.images[0] && (
+                            <ProductImage
+                              imagePath={product.images[0]}
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium">{product.name}</h4>
+                          <p className="text-sm text-muted-foreground line-clamp-1">
+                            {product.description}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                        product.status === "PUBLISHED"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                          : product.status === "DRAFT"
+                          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                          : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                      }`}>
+                        {product.status.toLowerCase()}
+                      </span>
+                    </td>
+                    <td className="p-4 text-sm text-muted-foreground">
+                      {new Date(product.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={`/products/${product.id}`}
+                          className="p-1 hover:bg-accent rounded"
+                          title="View"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Link>
+                        <Link
+                          to={`/admin/products/${product.id}/edit`}
+                          className="p-1 hover:bg-accent rounded"
+                          title="Edit"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className="p-1 hover:bg-accent rounded text-destructive"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

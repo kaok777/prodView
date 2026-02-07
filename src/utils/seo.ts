@@ -1,6 +1,4 @@
-import { Doc } from "../../convex/_generated/dataModel";
-
-export function generateProductStructuredData(product: Doc<"products">, imageUrl?: string) {
+export function generateProductStructuredData(product: any, imageUrl?: string) {
   return {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -20,7 +18,7 @@ export function generateProductStructuredData(product: Doc<"products">, imageUrl
   };
 }
 
-export function generateSiteMapData(products: Doc<"products">[], categories: any[], useCases: any[]) {
+export function generateSiteMapData(products: any[], categories: any[], useCases: any[]) {
   const baseUrl = window.location.origin;
   const urls = [
     { url: baseUrl, priority: 1.0, changefreq: "daily" },
@@ -30,7 +28,7 @@ export function generateSiteMapData(products: Doc<"products">[], categories: any
   // Add product URLs
   products.forEach(product => {
     urls.push({
-      url: `${baseUrl}/products/${product._id}`,
+      url: `${baseUrl}/products/${product.id}`,
       priority: 0.8,
       changefreq: "weekly"
     });
@@ -39,7 +37,7 @@ export function generateSiteMapData(products: Doc<"products">[], categories: any
   // Add category URLs
   categories.forEach(category => {
     urls.push({
-      url: `${baseUrl}/products?category=${category._id}`,
+      url: `${baseUrl}/products?category=${category.id}`,
       priority: 0.7,
       changefreq: "weekly"
     });
@@ -48,7 +46,7 @@ export function generateSiteMapData(products: Doc<"products">[], categories: any
   // Add use case URLs
   useCases.forEach(useCase => {
     urls.push({
-      url: `${baseUrl}/products?useCase=${useCase._id}`,
+      url: `${baseUrl}/products?useCase=${useCase.id}`,
       priority: 0.7,
       changefreq: "weekly"
     });

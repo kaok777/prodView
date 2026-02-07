@@ -1,46 +1,60 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import { ProductCard } from "../components/ProductCard";
 import { ProductImage } from "../components/ProductImage";
 import { SEOHead } from "../components/SEOHead";
 import { useAnalytics, useAffiliateTracking } from "../hooks/useAnalytics";
 import { generateProductStructuredData } from "../utils/seo";
+import api, { API_BASE_URL } from "../lib/api";
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [product, setProduct] = useState<any>(null);
+  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { track } = useAnalytics();
   const { trackClick } = useAffiliateTracking();
-  
-  const product = useQuery(api.products.getProductById, { 
-    productId: id as any 
-  });
-  
-  const relatedProducts = useQuery(api.products.getLatestProducts, { limit: 4 });
-  
-  const imageUrl = useQuery(
-    api.products.getImageUrl,
-    product?.images[0] ? { storageId: product.images[0] } : "skip"
-  );
 
-  // Track product view
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) return;
+
+      try {
+        setLoading(true);
+        const [productRes, relatedRes] = await Promise.all([
+          api.get(`/products/${id}`),
+          api.get('/products/latest?limit=5'),
+        ]);
+
+        setProduct(productRes.data);
+        setRelatedProducts(relatedRes.data);
+      } catch (error) {
+        console.error('Failed to fetch product:', error);
+        setProduct(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id]);
+
   useEffect(() => {
     if (product) {
-      track("product_view", product._id);
+      track("product_view", product.id);
     }
   }, [product, track]);
 
   const handleAffiliateClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (product) {
-      trackClick(product._id);
+      trackClick(product.id);
     }
   };
 
-  if (product === undefined) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div className="animate-pulse">
@@ -83,18 +97,22 @@ export function ProductDetailPage() {
   }
 
   const nextImage = () => {
-    setCurrentImageIndex((prev) => 
+    setCurrentImageIndex((prev) =>
       prev === product.images.length - 1 ? 0 : prev + 1
     );
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => 
+    setCurrentImageIndex((prev) =>
       prev === 0 ? product.images.length - 1 : prev - 1
     );
   };
 
-  const structuredData = generateProductStructuredData(product, imageUrl || undefined);
+  const imageUrl = product.images && product.images[0]
+    ? `${API_BASE_URL}${product.images[0]}`
+    : undefined;
+
+  const structuredData = generateProductStructuredData(product, imageUrl);
 
   return (
     <>
@@ -103,11 +121,10 @@ export function ProductDetailPage() {
         description={`${product.description} Affiliate link available. We may earn a commission at no cost to you.`}
         canonicalUrl={window.location.href}
         structuredData={structuredData}
-        image={imageUrl || undefined}
+        image={imageUrl}
       />
-      
+
       <div className="space-y-8">
-        {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground">
           <Link to="/" className="hover:text-foreground">Home</Link>
           <span>/</span>
@@ -116,15 +133,13 @@ export function ProductDetailPage() {
           <span className="text-foreground">{product.name}</span>
         </nav>
 
-        {/* Product Details */}
         <div className="grid md:grid-cols-2 gap-8">
-          {/* Image Gallery */}
           <div className="space-y-4">
             <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-              {product.images.length > 0 && (
+              {product.images && product.images.length > 0 && (
                 <>
                   <ProductImage
-                    storageId={product.images[currentImageIndex]}
+                    imagePath={product.images[currentImageIndex]}
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />
@@ -147,19 +162,19 @@ export function ProductDetailPage() {
                 </>
               )}
             </div>
-            
-            {product.images.length > 1 && (
+
+            {product.images && product.images.length > 1 && (
               <div className="flex gap-2 overflow-x-auto">
-                {product.images.map((imageId, index) => (
+                {product.images.map((imagePath: string, index: number) => (
                   <button
-                    key={imageId}
+                    key={index}
                     onClick={() => setCurrentImageIndex(index)}
                     className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${
                       index === currentImageIndex ? "border-primary" : "border-transparent"
                     }`}
                   >
                     <ProductImage
-                      storageId={imageId}
+                      imagePath={imagePath}
                       alt={`${product.name} ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
@@ -169,7 +184,6 @@ export function ProductDetailPage() {
             )}
           </div>
 
-          {/* Product Info */}
           <div className="space-y-6">
             <div>
               <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
@@ -178,7 +192,6 @@ export function ProductDetailPage() {
               </p>
             </div>
 
-            {/* CTA Button */}
             <div className="space-y-3">
               <button
                 onClick={handleAffiliateClick}
@@ -193,16 +206,15 @@ export function ProductDetailPage() {
           </div>
         </div>
 
-        {/* Related Products */}
         {relatedProducts && relatedProducts.length > 0 && (
           <section className="space-y-6">
             <h2 className="text-2xl font-bold">You Might Also Like</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedProducts
-                .filter(p => p._id !== product._id)
+                .filter(p => p.id !== product.id)
                 .slice(0, 4)
                 .map((relatedProduct) => (
-                  <ProductCard key={relatedProduct._id} product={relatedProduct} />
+                  <ProductCard key={relatedProduct.id} product={relatedProduct} />
                 ))}
             </div>
           </section>

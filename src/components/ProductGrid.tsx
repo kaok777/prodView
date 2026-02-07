@@ -1,68 +1,99 @@
-import { useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { useState, useEffect } from "react";
 import { ProductCard } from "./ProductCard";
 import { Grid, List, Loader2 } from "lucide-react";
-import { Id } from "../../convex/_generated/dataModel";
-import { getClientInfo } from "../utils/security";
+import api from "../lib/api";
 
 interface ProductGridProps {
-  categoryId?: Id<"categories">;
-  useCaseId?: Id<"useCases">;
+  categoryId?: string | null;
+  useCaseId?: string | null;
   searchQuery?: string;
 }
 
 export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridProps) {
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [allProducts, setAllProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const clientInfo = getClientInfo();
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        setPage(1);
+        let response;
 
-  // Determine which query to use
-  const searchResults = useQuery(
-    api.products.searchProducts,
-    searchQuery ? {
-      keyword: searchQuery,
-      paginationOpts: { numItems: 40, cursor },
-      ip: clientInfo.ip
-    } : "skip"
-  );
+        if (searchQuery) {
+          response = await api.get('/products/search', {
+            params: { keyword: searchQuery, page: 1, pageSize: 40 }
+          });
+        } else if (categoryId) {
+          response = await api.get(`/products/category/${categoryId}`, {
+            params: { page: 1, pageSize: 40 }
+          });
+        } else if (useCaseId) {
+          response = await api.get(`/products/use-case/${useCaseId}`, {
+            params: { page: 1, pageSize: 40 }
+          });
+        } else {
+          response = await api.get('/products/latest', {
+            params: { limit: 40 }
+          });
+        }
 
-  const categoryResults = useQuery(
-    api.products.getProductsByCategory,
-    categoryId && !searchQuery ? {
-      categoryId,
-      paginationOpts: { numItems: 40, cursor }
-    } : "skip"
-  );
+        if (Array.isArray(response.data)) {
+          setProducts(response.data);
+          setTotalPages(1);
+        } else {
+          setProducts(response.data.products || []);
+          setTotalPages(response.data.totalPages || 1);
+        }
+      } catch (error) {
+        console.error('Failed to fetch products:', error);
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const useCaseResults = useQuery(
-    api.products.getProductsByUseCase,
-    useCaseId && !searchQuery ? {
-      useCaseId,
-      paginationOpts: { numItems: 40, cursor }
-    } : "skip"
-  );
+    fetchProducts();
+  }, [categoryId, useCaseId, searchQuery]);
 
-  const latestResults = useQuery(
-    api.products.getLatestProducts,
-    !categoryId && !useCaseId && !searchQuery ? { limit: 40 } : "skip"
-  );
+  const handleLoadMore = async () => {
+    if (loadingMore || page >= totalPages) return;
 
-  // Determine current results
-  const results = searchResults || categoryResults || useCaseResults;
-  const products = results?.page || latestResults || [];
-  const hasMore = results?.isDone === false;
-  const isLoading = results === undefined && latestResults === undefined;
+    try {
+      setLoadingMore(true);
+      const nextPage = page + 1;
+      let response;
 
-  const handleLoadMore = () => {
-    if (results?.continueCursor) {
-      setCursor(results.continueCursor);
+      if (searchQuery) {
+        response = await api.get('/products/search', {
+          params: { keyword: searchQuery, page: nextPage, pageSize: 40 }
+        });
+      } else if (categoryId) {
+        response = await api.get(`/products/category/${categoryId}`, {
+          params: { page: nextPage, pageSize: 40 }
+        });
+      } else if (useCaseId) {
+        response = await api.get(`/products/use-case/${useCaseId}`, {
+          params: { page: nextPage, pageSize: 40 }
+        });
+      }
+
+      if (response && response.data.products) {
+        setProducts(prev => [...prev, ...response.data.products]);
+        setPage(nextPage);
+      }
+    } catch (error) {
+      console.error('Failed to load more products:', error);
+    } finally {
+      setLoadingMore(false);
     }
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="space-y-4">
         <div className="flex justify-between items-center">
@@ -86,7 +117,7 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">
-          {searchQuery ? `Search results for "${searchQuery}"` : 
+          {searchQuery ? `Search results for "${searchQuery}"` :
            categoryId ? "Category Products" :
            useCaseId ? "Use Case Products" :
            "Latest Products"}
@@ -115,18 +146,19 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
         <>
           <div className={view === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
             {products.map((product: any) => (
-              <ProductCard key={product._id} product={product} view={view} />
+              <ProductCard key={product.id} product={product} view={view} />
             ))}
           </div>
 
-          {hasMore && (
+          {page < totalPages && (
             <div className="text-center">
               <button
                 onClick={handleLoadMore}
-                className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 mx-auto"
+                disabled={loadingMore}
+                className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
               >
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Load More
+                {loadingMore && <Loader2 className="w-4 h-4 animate-spin" />}
+                {loadingMore ? "Loading..." : "Load More"}
               </button>
             </div>
           )}

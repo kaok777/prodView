@@ -1,31 +1,44 @@
 import { useSearchParams } from "react-router-dom";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import { ProductGrid } from "../components/ProductGrid";
 import { SEOHead } from "../components/SEOHead";
 import { useAnalytics } from "../hooks/useAnalytics";
-import { useEffect } from "react";
-import { Id } from "../../convex/_generated/dataModel";
+import { useEffect, useState } from "react";
+import api from "../lib/api";
 
 export function ProductSelectionPage() {
   const [searchParams] = useSearchParams();
   const { track } = useAnalytics();
-  
-  const categoryId = searchParams.get("category") as Id<"categories"> | undefined;
-  const useCaseId = searchParams.get("useCase") as Id<"useCases"> | undefined;
+  const [category, setCategory] = useState<any>(null);
+  const [useCase, setUseCase] = useState<any>(null);
+
+  const categoryId = searchParams.get("category");
+  const useCaseId = searchParams.get("useCase");
   const searchQuery = searchParams.get("search") || undefined;
 
-  const category = useQuery(
-    api.categories.getCategoryById,
-    categoryId ? { categoryId } : "skip"
-  );
-  
-  const useCase = useQuery(
-    api.useCases.getUseCaseById,
-    useCaseId ? { useCaseId } : "skip"
-  );
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        if (categoryId) {
+          const response = await api.get(`/categories/${categoryId}`);
+          setCategory(response.data);
+        } else {
+          setCategory(null);
+        }
 
-  // Track page views and interactions
+        if (useCaseId) {
+          const response = await api.get(`/use-cases/${useCaseId}`);
+          setUseCase(response.data);
+        } else {
+          setUseCase(null);
+        }
+      } catch (error) {
+        console.error('Failed to fetch metadata:', error);
+      }
+    };
+
+    fetchMetadata();
+  }, [categoryId, useCaseId]);
+
   useEffect(() => {
     if (categoryId) {
       track("category_click", categoryId);
@@ -38,7 +51,6 @@ export function ProductSelectionPage() {
     }
   }, [categoryId, useCaseId, searchQuery, track]);
 
-  // Generate SEO metadata
   const getTitle = () => {
     if (searchQuery) return `Search results for "${searchQuery}"`;
     if (category) return `${category.name} Products`;
@@ -66,9 +78,9 @@ export function ProductSelectionPage() {
         description={getDescription()}
         canonicalUrl={window.location.href}
       />
-      
+
       <div>
-        <ProductGrid 
+        <ProductGrid
           categoryId={categoryId}
           useCaseId={useCaseId}
           searchQuery={searchQuery}

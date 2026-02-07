@@ -1,27 +1,60 @@
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { useState, useEffect } from "react";
 import { BarChart3, Eye, MousePointer, Search, TrendingUp } from "lucide-react";
-import { getAdminSession } from "../../utils/security";
+import api from "../../lib/api";
 
 export function AdminAnalytics() {
-  const session = getAdminSession();
-  
-  const topProducts = useQuery(
-    api.analytics.getTopProducts, 
-    session ? { adminId: session.adminId as any, limit: 10 } : "skip"
-  );
-  const affiliateClicks = useQuery(
-    api.analytics.getAffiliateClicks, 
-    session ? { adminId: session.adminId as any, limit: 10 } : "skip"
-  );
-  const categoryStats = useQuery(
-    api.analytics.getCategoryStats,
-    session ? { adminId: session.adminId as any } : "skip"
-  );
-  const searchStats = useQuery(
-    api.analytics.getSearchStats, 
-    session ? { adminId: session.adminId as any, limit: 15 } : "skip"
-  );
+  const [topProducts, setTopProducts] = useState<any[]>([]);
+  const [affiliateClicks, setAffiliateClicks] = useState<any[]>([]);
+  const [categoryStats, setCategoryStats] = useState<any[]>([]);
+  const [searchStats, setSearchStats] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        setLoading(true);
+        const [topProductsRes, affiliateClicksRes, categoryStatsRes, searchStatsRes] = await Promise.all([
+          api.get('/analytics/top-products', { params: { limit: 10 } }),
+          api.get('/analytics/affiliate-clicks', { params: { limit: 10 } }),
+          api.get('/analytics/category-stats'),
+          api.get('/analytics/search-stats', { params: { limit: 15 } })
+        ]);
+
+        setTopProducts(topProductsRes.data);
+        setAffiliateClicks(affiliateClicksRes.data);
+        setCategoryStats(categoryStatsRes.data);
+        setSearchStats(searchStatsRes.data);
+      } catch (error) {
+        console.error('Failed to fetch analytics:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <div className="h-8 bg-muted rounded w-64 animate-pulse"></div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-card rounded-lg border p-6">
+              <div className="h-6 bg-muted rounded w-48 mb-4 animate-pulse"></div>
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, j) => (
+                  <div key={j} className="h-16 bg-muted rounded animate-pulse"></div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -38,15 +71,15 @@ export function AdminAnalytics() {
             <h2 className="text-xl font-semibold">Most Viewed Products</h2>
           </div>
           <div className="space-y-3">
-            {topProducts && topProducts.length > 0 ? topProducts.filter(p => p !== null).map((product, index) => (
-              <div key={product!._id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+            {topProducts && topProducts.length > 0 ? topProducts.map((product, index) => (
+              <div key={product.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center gap-3">
                   <span className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">
                     {index + 1}
                   </span>
                   <div>
-                    <p className="font-medium line-clamp-1">{(product as any).name}</p>
-                    <p className="text-sm text-muted-foreground">{(product as any).views} views</p>
+                    <p className="font-medium line-clamp-1">{product.name}</p>
+                    <p className="text-sm text-muted-foreground">{product.views} views</p>
                   </div>
                 </div>
               </div>
@@ -65,15 +98,15 @@ export function AdminAnalytics() {
             <h2 className="text-xl font-semibold">Most Clicked Products</h2>
           </div>
           <div className="space-y-3">
-            {affiliateClicks && affiliateClicks.length > 0 ? affiliateClicks.filter(p => p !== null).map((product, index) => (
-              <div key={product!._id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+            {affiliateClicks && affiliateClicks.length > 0 ? affiliateClicks.map((product, index) => (
+              <div key={product.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center gap-3">
                   <span className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-medium">
                     {index + 1}
                   </span>
                   <div>
-                    <p className="font-medium line-clamp-1">{(product as any).name}</p>
-                    <p className="text-sm text-muted-foreground">{(product as any).clicks} clicks</p>
+                    <p className="font-medium line-clamp-1">{product.name}</p>
+                    <p className="text-sm text-muted-foreground">{product.clicks} clicks</p>
                   </div>
                 </div>
               </div>
@@ -93,14 +126,14 @@ export function AdminAnalytics() {
           </div>
           <div className="space-y-3">
             {categoryStats && categoryStats.length > 0 ? categoryStats.slice(0, 8).map((category, index) => (
-              <div key={category._id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div key={category.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                 <div className="flex items-center gap-3">
                   <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">
                     {index + 1}
                   </span>
                   <div>
-                    <p className="font-medium">{(category as any).name}</p>
-                    <p className="text-sm text-muted-foreground">{(category as any).clicks} clicks</p>
+                    <p className="font-medium">{category.name}</p>
+                    <p className="text-sm text-muted-foreground">{category.clicks} clicks</p>
                   </div>
                 </div>
               </div>
