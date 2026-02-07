@@ -8,10 +8,13 @@ import {
   Ip,
   Headers,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AnalyticsService } from './analytics.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Public, CurrentUser, Roles } from '../common/decorators';
+import { TrackEventDto, AffiliateClickDto } from './dto/track-event.dto';
+import { LimitDto } from '../common/dto/pagination.dto';
 
 @Controller('analytics')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -20,28 +23,25 @@ export class AnalyticsController {
 
   @Public()
   @Post('track')
+  @Throttle({ default: { limit: 200, ttl: 60000 } })
   trackEvent(
-    @Body() trackEventDto: {
-      eventType: string;
-      entityId?: string;
-      metadata?: any;
-      sessionId: string;
-    },
+    @Body() trackEventDto: TrackEventDto,
     @Ip() ip: string,
   ) {
     return this.analyticsService.trackEvent(
       trackEventDto.eventType,
       trackEventDto.entityId,
       trackEventDto.metadata,
-      trackEventDto.sessionId,
+      trackEventDto.sessionId || '',
       ip,
     );
   }
 
   @Public()
   @Post('affiliate-click')
+  @Throttle({ default: { limit: 100, ttl: 60000 } })
   trackAffiliateClick(
-    @Body() dto: { productId: string },
+    @Body() dto: AffiliateClickDto,
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string,
   ) {
@@ -50,43 +50,47 @@ export class AnalyticsController {
 
   @Roles('admin')
   @Get('top-products')
+  @Throttle({ default: { limit: 50, ttl: 60000 } })
   getTopProducts(
     @CurrentUser() user: any,
-    @Query('limit') limit: string,
+    @Query() limitDto: LimitDto,
   ) {
     return this.analyticsService.getTopProducts(
       user.id,
-      parseInt(limit) || 10,
+      limitDto.limit || 10,
     );
   }
 
   @Roles('admin')
   @Get('affiliate-clicks')
+  @Throttle({ default: { limit: 50, ttl: 60000 } })
   getAffiliateClicks(
     @CurrentUser() user: any,
-    @Query('limit') limit: string,
+    @Query() limitDto: LimitDto,
   ) {
     return this.analyticsService.getAffiliateClicks(
       user.id,
-      parseInt(limit) || 10,
+      limitDto.limit || 10,
     );
   }
 
   @Roles('admin')
   @Get('category-stats')
+  @Throttle({ default: { limit: 50, ttl: 60000 } })
   getCategoryStats(@CurrentUser() user: any) {
     return this.analyticsService.getCategoryStats(user.id);
   }
 
   @Roles('admin')
   @Get('search-stats')
+  @Throttle({ default: { limit: 50, ttl: 60000 } })
   getSearchStats(
     @CurrentUser() user: any,
-    @Query('limit') limit: string,
+    @Query() limitDto: LimitDto,
   ) {
     return this.analyticsService.getSearchStats(
       user.id,
-      parseInt(limit) || 20,
+      limitDto.limit || 20,
     );
   }
 }
