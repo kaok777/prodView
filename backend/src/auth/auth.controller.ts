@@ -2,11 +2,13 @@ import { Controller, Post, Body, Ip, Headers, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { Public } from '../common/decorators';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('login')
   @Throttle({ default: { limit: 5, ttl: 900000 } })
   async login(
@@ -22,6 +24,7 @@ export class AuthController {
     );
   }
 
+  @Public()
   @Post('setup-first-admin')
   @Throttle({ default: { limit: 1, ttl: 3600000 } })
   async setupFirstAdmin() {

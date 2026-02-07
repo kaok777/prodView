@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
 import { ProductsModule } from './products/products.module';
 import { CategoriesModule } from './categories/categories.module';
@@ -30,6 +31,7 @@ import { PrismaService } from './common/prisma.service';
     AnalyticsModule,
     UploadModule,
   ],
+  controllers: [AppController],
   providers: [
     PrismaService,
     {
