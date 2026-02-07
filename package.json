@@ -1,12 +1,15 @@
 {
-  "name": "flex-template",
+  "name": "prodview-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "ProdView Frontend - React + Vite + TailwindCSS",
   "type": "module",
   "scripts": {
     "dev": "vite --open",
     "build": "tsc && vite build",
-    "lint": "tsc --noEmit"
+    "preview": "vite preview",
+    "lint": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
     "axios": "^1.6.7",
@@ -30,12 +33,14 @@
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^15.15.0",
-    "npm-run-all": "^4.1.5",
     "postcss": "~8",
     "prettier": "^3.5.3",
     "tailwindcss": "~3",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.24.1",
     "vite": "^6.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
