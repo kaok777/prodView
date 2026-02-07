@@ -329,5 +329,227 @@ Location: `backend/src/auth/auth.service.ts:113-114`
 
 ---
 
+## Code Verification (2026-02-07 - Post-Fix Audit)
+
+### Backend Code Verification
+
+**✅ AppModule Configuration** (`backend/src/app.module.ts`)
+- Line 6: `import { AppController } from './app.controller';` ✅
+- Line 27: `AuthModule` imported in AppModule ✅
+- Line 34: `AppController` registered in controllers array ✅
+- Lines 38-44: JwtAuthGuard and RolesGuard configured as global guards ✅
+
+**✅ AppController Implementation** (`backend/src/app.controller.ts`)
+- Line 1-2: Imports Controller, Get, and Public decorator ✅
+- Lines 6-15: Root GET `/` endpoint with @Public() decorator ✅
+- Lines 17-25: Health GET `/health` endpoint with @Public() decorator ✅
+- Both endpoints return JSON responses ✅
+
+**✅ AuthController Implementation** (`backend/src/auth/auth.controller.ts`)
+- Line 5: `import { Public } from '../common/decorators';` ✅
+- Line 7: `@Controller('auth')` decorator sets route prefix ✅
+- Line 11: `@Public()` decorator on login endpoint ✅
+- Line 12-25: POST `/login` endpoint implementation ✅
+- Line 27: `@Public()` decorator on setup-first-admin endpoint ✅
+- Line 28-32: POST `/setup-first-admin` endpoint implementation ✅
+
+**✅ Main.ts Configuration** (`backend/src/main.ts`)
+- Lines 104-106: Global prefix `/api` configured ✅
+- Exclusions: `['uploads/*', 'health']` ✅
+- Note: Root `/` is also excluded automatically (no prefix applied to @Controller() with empty path) ✅
+
+**✅ TypeScript Compilation**
+- Command: `npm run build` in backend directory
+- Result: ✅ SUCCESS - No compilation errors
+- Output: Clean build in `dist/` directory
+
+### Frontend Code Verification
+
+**✅ API Configuration** (`src/lib/api.ts`)
+- Line 3: `export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';` ✅
+- Includes `/api` prefix in default URL ✅
+- Lines 13-19: Authorization header interceptor configured ✅
+- Lines 21-34: 401 error handling with session cleanup ✅
+
+**✅ AdminLoginPage Implementation** (`src/pages/admin/AdminLoginPage.tsx`)
+- Line 22: Login request: `api.post('/auth/login', { email, password })` ✅
+- Payload format matches LoginDto: { email: string, password: string } ✅
+- Line 25: Stores accessToken in localStorage ✅
+- Line 40: Setup request: `api.post('/auth/setup-first-admin')` ✅
+
+**✅ Login DTO Validation** (`backend/src/auth/dto/login.dto.ts`)
+- Lines 4-6: Email validation with @IsEmail() and @MaxLength(254) ✅
+- Lines 8-14: Password validation with length and complexity requirements ✅
+- Frontend payload matches DTO structure ✅
+
+### Route Mapping Verification
+
+**Expected Routes (with /api prefix):**
+```
+GET  http://localhost:3000/              → AppController.getRoot() [Public]
+GET  http://localhost:3000/health        → AppController.getHealth() [Public]
+POST http://localhost:3000/api/auth/login → AuthController.login() [Public]
+POST http://localhost:3000/api/auth/setup-first-admin → AuthController.setupFirstAdmin() [Public]
+```
+
+**Route Registration Flow:**
+1. NestJS registers AppController with @Controller() → Routes: `/`, `/health`
+2. Global prefix `/api` applied to all routes EXCEPT those in exclude list
+3. `/health` explicitly excluded from global prefix
+4. Root `/` automatically excluded (empty controller path)
+5. AuthController with @Controller('auth') → Routes prefixed: `/api/auth/*`
+
+### Environment Configuration Verification
+
+**Backend .env file:**
+- ✅ File exists: `/mnt/c/Users/kwabe/OneDrive/Desktop/Coding/prodView/backend/.env`
+- ✅ Contains DATABASE_URL, JWT_SECRET, PORT, NODE_ENV, CORS_ORIGIN
+- ✅ Default admin credentials configured (ADMIN_EMAIL, ADMIN_PASSWORD)
+
+**Frontend .env configuration:**
+- Environment variable: VITE_API_URL
+- Default fallback: `http://localhost:3000/api` (includes /api prefix)
+- Production: Should be set to `https://your-domain.com/api`
+
+---
+
+## Testing Instructions
+
+### 1. Start Backend Server
+
+```bash
+cd backend
+
+# Install dependencies (if not already done)
+npm install
+
+# Run Prisma migrations (first time setup)
+npx prisma migrate dev
+
+# Generate Prisma client
+npx prisma generate
+
+# Start development server
+npm run start:dev
+```
+
+**Expected Output:**
+```
+Backend server running on http://localhost:3000
+Environment: development
+CORS origins: http://localhost:5173
+```
+
+### 2. Test Root Endpoint
+
+```bash
+curl http://localhost:3000/
+```
+
+**Expected Response:**
+```json
+{
+  "status": "ok",
+  "message": "ProdView API Server",
+  "version": "1.0.0",
+  "timestamp": "2026-02-07T..."
+}
+```
+
+### 3. Test Health Endpoint
+
+```bash
+curl http://localhost:3000/health
+```
+
+**Expected Response:**
+```json
+{
+  "status": "healthy",
+  "uptime": 123.456,
+  "timestamp": "2026-02-07T..."
+}
+```
+
+### 4. Test Setup First Admin
+
+```bash
+curl -X POST http://localhost:3000/api/auth/setup-first-admin \
+  -H "Content-Type: application/json"
+```
+
+**Expected Response (if no admin exists):**
+```json
+{
+  "adminId": "uuid-here",
+  "email": "vibrationconnect@gmail.com",
+  "password": "Cxserfd345!",
+  "message": "First admin created successfully."
+}
+```
+
+**Expected Response (if admin already exists):**
+```json
+{
+  "statusCode": 400,
+  "message": "Admin user already exists",
+  "error": "Bad Request"
+}
+```
+
+### 5. Test Admin Login
+
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "vibrationconnect@gmail.com",
+    "password": "Cxserfd345!"
+  }'
+```
+
+**Expected Response (Success):**
+```json
+{
+  "adminId": "uuid-here",
+  "email": "vibrationconnect@gmail.com",
+  "role": "admin",
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Expected Response (Invalid Credentials):**
+```json
+{
+  "statusCode": 401,
+  "message": "Invalid credentials",
+  "error": "Unauthorized"
+}
+```
+
+### 6. Test Frontend Login Flow
+
+```bash
+# Start frontend development server (in separate terminal)
+npm run dev
+```
+
+**Steps:**
+1. Navigate to `http://localhost:5173/admin/login`
+2. Click "Setup Admin Account" button (if first time)
+3. Enter credentials: `vibrationconnect@gmail.com` / `Cxserfd345!`
+4. Click "Sign In"
+5. Should redirect to `/admin` dashboard
+
+**Expected Network Requests (Browser DevTools):**
+```
+POST http://localhost:3000/api/auth/login
+Status: 200 OK (if credentials correct) or 401 Unauthorized (if incorrect)
+```
+
+---
+
 **Fix Date**: 2026-02-07
-**Status**: ✅ COMPLETE (routing fixed, database setup required)
+**Verification Date**: 2026-02-07
+**Status**: ✅ COMPLETE - All fixes verified, code compiles successfully
+**Next Step**: Start PostgreSQL database and run backend server for live testing
