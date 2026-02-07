@@ -51,6 +51,7 @@ export function getAdminSession(): AdminSession | null {
 
 export function clearAdminSession(): void {
   localStorage.removeItem("adminSession");
+  localStorage.removeItem("accessToken");
 }
 
 export function setAdminSession(session: AdminSession): void {

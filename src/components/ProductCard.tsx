@@ -1,10 +1,9 @@
 import { Link } from "react-router-dom";
-import { Doc } from "../../convex/_generated/dataModel";
 import { ExternalLink } from "lucide-react";
 import { ProductImage } from "./ProductImage";
 
 interface ProductCardProps {
-  product: Doc<"products">;
+  product: any;
   view?: "grid" | "list";
 }
 
@@ -14,9 +13,9 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
       <div className="bg-card rounded-lg border p-4 hover:shadow-md transition-shadow">
         <div className="flex gap-4">
           <div className="w-24 h-24 bg-muted rounded-lg flex-shrink-0 overflow-hidden">
-            {product.images[0] && (
+            {product.images && product.images[0] && (
               <ProductImage
-                storageId={product.images[0]}
+                imagePath={product.images[0]}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
@@ -24,7 +23,7 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
           </div>
           <div className="flex-1 min-w-0">
             <Link
-              to={`/products/${product._id}`}
+              to={`/products/${product.id}`}
               className="text-lg font-semibold hover:text-primary transition-colors line-clamp-1"
             >
               {product.name}
@@ -34,7 +33,7 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
             </p>
             <div className="flex items-center gap-2 mt-3">
               <Link
-                to={`/products/${product._id}`}
+                to={`/products/${product.id}`}
                 className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 transition-colors"
               >
                 View Details
@@ -57,9 +56,9 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
   return (
     <div className="bg-card rounded-lg border overflow-hidden hover:shadow-md transition-shadow">
       <div className="aspect-video bg-muted overflow-hidden">
-        {product.images[0] && (
+        {product.images && product.images[0] && (
           <ProductImage
-            storageId={product.images[0]}
+            imagePath={product.images[0]}
             alt={product.name}
             className="w-full h-full object-cover"
           />
@@ -67,7 +66,7 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
       </div>
       <div className="p-4">
         <Link
-          to={`/products/${product._id}`}
+          to={`/products/${product.id}`}
           className="text-lg font-semibold hover:text-primary transition-colors line-clamp-2"
         >
           {product.name}
@@ -77,7 +76,7 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
         </p>
         <div className="flex items-center gap-2 mt-4">
           <Link
-            to={`/products/${product._id}`}
+            to={`/products/${product.id}`}
             className="flex-1 px-3 py-2 bg-primary text-primary-foreground rounded-md text-sm text-center hover:bg-primary/90 transition-colors"
           >
             View Details

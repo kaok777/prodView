@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAction, useMutation } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 import { setAdminSession } from "../../utils/security";
+import api from "../../lib/api";
 
 export function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -12,22 +11,24 @@ export function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
-  
+
   const navigate = useNavigate();
-  const adminLogin = useAction(api.adminAuth.adminLogin);
-  const setupFirstAdmin = useMutation(api.adminAuth.setupFirstAdmin);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const result = await adminLogin({ email, password });
-      setAdminSession(result);
+      const response = await api.post('/auth/login', { email, password });
+      const { accessToken, ...userData } = response.data;
+
+      localStorage.setItem('accessToken', accessToken);
+      setAdminSession(userData);
+
       toast.success("Login successful");
       navigate("/admin");
-    } catch (error) {
-      toast.error("Invalid credentials");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Invalid credentials");
     } finally {
       setIsLoading(false);
     }
@@ -36,12 +37,12 @@ export function AdminLoginPage() {
   const handleSetup = async () => {
     setSetupLoading(true);
     try {
-      const result = await setupFirstAdmin({});
+      const response = await api.post('/auth/setup-first-admin');
       toast.success("Admin user created successfully!");
-      setEmail("vibrationconnect@gmail.com");
-      setPassword("Cxserfd345;");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Setup failed");
+      setEmail(response.data.email);
+      setPassword(response.data.password);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Setup failed");
     } finally {
       setSetupLoading(false);
     }

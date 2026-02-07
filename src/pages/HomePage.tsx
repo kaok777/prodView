@@ -1,14 +1,37 @@
 import { Link } from "react-router-dom";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
+import { useState, useEffect } from "react";
 import { ProductCard } from "../components/ProductCard";
 import { SEOHead } from "../components/SEOHead";
 import { ArrowRight } from "lucide-react";
+import api from "../lib/api";
 
 export function HomePage() {
-  const latestProducts = useQuery(api.products.getLatestProducts, { limit: 6 });
-  const categories = useQuery(api.categories.getAllCategories);
-  const useCases = useQuery(api.useCases.getAllUseCases);
+  const [latestProducts, setLatestProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [useCases, setUseCases] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [productsRes, categoriesRes, useCasesRes] = await Promise.all([
+          api.get('/products/latest?limit=6'),
+          api.get('/categories'),
+          api.get('/use-cases'),
+        ]);
+
+        setLatestProducts(productsRes.data);
+        setCategories(categoriesRes.data);
+        setUseCases(useCasesRes.data);
+      } catch (error) {
+        console.error('Failed to fetch homepage data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   return (
     <>
@@ -17,7 +40,7 @@ export function HomePage() {
         description="Find the perfect products for your needs. Browse by category, use case, or search for something specific. Affiliate disclosure: We may earn commissions from purchases."
         canonicalUrl={window.location.origin}
       />
-      
+
       <div className="space-y-12">
         {/* Hero Section */}
         <section className="text-center py-12">
@@ -41,8 +64,8 @@ export function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {categories?.slice(0, 8).map((category) => (
               <Link
-                key={category._id}
-                to={`/products?category=${category._id}`}
+                key={category.id}
+                to={`/products?category=${category.id}`}
                 className="p-4 bg-card rounded-lg border hover:shadow-md transition-shadow text-center"
               >
                 <h3 className="font-semibold">{category.name}</h3>
@@ -67,8 +90,8 @@ export function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {useCases?.slice(0, 8).map((useCase) => (
               <Link
-                key={useCase._id}
-                to={`/products?useCase=${useCase._id}`}
+                key={useCase.id}
+                to={`/products?useCase=${useCase.id}`}
                 className="p-4 bg-card rounded-lg border hover:shadow-md transition-shadow text-center"
               >
                 <h3 className="font-semibold">{useCase.name}</h3>
@@ -98,8 +121,8 @@ export function HomePage() {
               View all <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-          
-          {latestProducts === undefined ? (
+
+          {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="animate-pulse">
@@ -112,7 +135,7 @@ export function HomePage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {latestProducts.map((product) => (
-                <ProductCard key={product._id} product={product} />
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           )}
@@ -121,7 +144,7 @@ export function HomePage() {
         {/* Affiliate Disclosure */}
         <section className="bg-muted/50 rounded-lg p-6 text-center">
           <p className="text-sm text-muted-foreground">
-            <strong>Affiliate Disclosure:</strong> Some links on this site are affiliate links. 
+            <strong>Affiliate Disclosure:</strong> Some links on this site are affiliate links.
             We may earn a commission if you make a purchase through these links, at no additional cost to you.
           </p>
         </section>
