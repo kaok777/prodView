@@ -11,7 +11,7 @@ export enum EventType {
 
 export class TrackEventDto {
   @IsEnum(EventType, { message: 'Event type must be a valid event type' })
-  eventType: EventType;
+  eventType!: EventType;
 
   @IsOptional()
   @IsUUID('4', { message: 'Entity ID must be a valid UUID' })
@@ -29,7 +29,7 @@ export class TrackEventDto {
 
 export class AffiliateClickDto {
   @IsUUID('4', { message: 'Product ID must be a valid UUID' })
-  productId: string;
+  productId!: string;
 
   @IsOptional()
   @IsString({ message: 'Session ID must be a string' })

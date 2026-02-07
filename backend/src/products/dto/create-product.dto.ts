@@ -25,18 +25,18 @@ export class CreateProductDto {
   @Matches(/^[a-zA-Z0-9\s\-_&().,]+$/, {
     message: 'Product name contains invalid characters',
   })
-  name: string;
+  name!: string;
 
   @IsString({ message: 'Description must be a string' })
   @MinLength(10, { message: 'Description must be at least 10 characters long' })
   @MaxLength(2000, { message: 'Description must not exceed 2000 characters' })
-  description: string;
+  description!: string;
 
   @IsUrl({ require_protocol: true, protocols: ['http', 'https'] }, {
     message: 'Affiliate URL must be a valid HTTP/HTTPS URL',
   })
   @MaxLength(500, { message: 'Affiliate URL must not exceed 500 characters' })
-  affiliateUrl: string;
+  affiliateUrl!: string;
 
   @IsOptional()
   @IsEnum(ProductStatus, { message: 'Status must be DRAFT, PUBLISHED, or ARCHIVED' })
@@ -45,15 +45,15 @@ export class CreateProductDto {
   @IsArray({ message: 'Category IDs must be an array' })
   @IsUUID('4', { each: true, message: 'Each category ID must be a valid UUID' })
   @ArrayMaxSize(10, { message: 'Cannot assign more than 10 categories' })
-  categories: string[];
+  categories!: string[];
 
   @IsArray({ message: 'Use case IDs must be an array' })
   @IsUUID('4', { each: true, message: 'Each use case ID must be a valid UUID' })
   @ArrayMaxSize(10, { message: 'Cannot assign more than 10 use cases' })
-  useCases: string[];
+  useCases!: string[];
 
   @IsArray({ message: 'Images must be an array' })
   @IsString({ each: true, message: 'Each image path must be a string' })
   @ArrayMaxSize(20, { message: 'Cannot upload more than 20 images' })
-  images: string[];
+  images!: string[];
 }

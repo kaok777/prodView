@@ -21,7 +21,7 @@ import { UploadController } from './upload.controller';
             const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 
             if (!allowedExtensions.includes(ext)) {
-              callback(new Error('Invalid file extension'), null);
+              callback(new Error('Invalid file extension'), '');
               return;
             }
 

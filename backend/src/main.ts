@@ -96,7 +96,7 @@ async function bootstrap() {
     },
   });
 
-  app.use((req, res, next) => {
+  app.use((req: any, res: any, next: any) => {
     res.removeHeader('X-Powered-By');
     next();
   });
