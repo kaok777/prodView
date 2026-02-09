@@ -152,7 +152,7 @@ export function ProductEditorPage() {
           <button
             type="button"
             onClick={() => navigate("/admin")}
-            className="px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
+            className="px-4 py-2 border border-border rounded-lg hover:bg-accent hover:shadow-sm transition-all duration-200 ease-in-out"
           >
             Cancel
           </button>
@@ -172,7 +172,7 @@ export function ProductEditorPage() {
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                 required
-                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out placeholder:text-muted-foreground"
                 placeholder="Enter product name"
               />
             </div>
@@ -186,7 +186,7 @@ export function ProductEditorPage() {
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 required
                 rows={4}
-                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out placeholder:text-muted-foreground resize-vertical"
                 placeholder="Enter product description"
               />
             </div>
@@ -200,7 +200,7 @@ export function ProductEditorPage() {
                 value={formData.affiliateUrl}
                 onChange={(e) => setFormData(prev => ({ ...prev, affiliateUrl: e.target.value }))}
                 required
-                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out placeholder:text-muted-foreground"
                 placeholder="https://example.com/product"
               />
             </div>
@@ -212,7 +212,7 @@ export function ProductEditorPage() {
               <select
                 value={formData.status}
                 onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
-                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out"
               >
                 <option value="DRAFT">Draft</option>
                 <option value="PUBLISHED">Published</option>
@@ -294,7 +294,7 @@ export function ProductEditorPage() {
           </label>
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <label className={`flex items-center gap-2 px-4 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent transition-colors ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              <label className={`flex items-center gap-2 px-4 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent hover:shadow-sm transition-all duration-200 ease-in-out ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <Upload className="w-4 h-4" />
                 {uploading ? "Uploading..." : "Upload Image"}
                 <input
@@ -321,7 +321,7 @@ export function ProductEditorPage() {
                     <button
                       type="button"
                       onClick={() => removeImage(index)}
-                      className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 ease-in-out hover:scale-110"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -336,7 +336,7 @@ export function ProductEditorPage() {
         <div className="flex justify-end gap-2">
           <button
             type="submit"
-            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 hover:shadow-md transition-all duration-200 ease-in-out flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
             {isEditing ? "Update Product" : "Create Product"}

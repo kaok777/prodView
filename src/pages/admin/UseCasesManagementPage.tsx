@@ -106,7 +106,7 @@ export function UseCasesManagementPage() {
         <h1 className="text-3xl font-bold">Use Cases Management</h1>
         <button
           onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 hover:shadow-md transition-all duration-150 ease-out flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Add Use Case
@@ -123,20 +123,20 @@ export function UseCasesManagementPage() {
           </thead>
           <tbody className="divide-y divide-border">
             {useCases.map((useCase) => (
-              <tr key={useCase.id} className="hover:bg-muted/30 transition-colors">
+              <tr key={useCase.id} className="hover:bg-muted/30 transition-colors duration-150">
                 <td className="px-6 py-4">{useCase.name}</td>
                 <td className="px-6 py-4">
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={() => handleEdit(useCase)}
-                      className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                      className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all duration-150 ease-out hover:scale-110"
                       title="Edit"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(useCase.id, useCase.name)}
-                      className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                      className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-all duration-150 ease-out hover:scale-110"
                       title="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -151,15 +151,15 @@ export function UseCasesManagementPage() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-background border border-border rounded-lg w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-background border border-border rounded-lg w-full max-w-md p-6 space-y-4 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-bold">
                 {editingUseCase ? "Edit Use Case" : "Add Use Case"}
               </h2>
               <button
                 onClick={handleCloseModal}
-                className="p-1 hover:bg-muted rounded transition-colors"
+                className="p-1 hover:bg-muted rounded transition-all duration-150 ease-out hover:scale-110"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -177,7 +177,7 @@ export function UseCasesManagementPage() {
                     setFormData((prev) => ({ ...prev, name: e.target.value }))
                   }
                   required
-                  className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out placeholder:text-muted-foreground"
                   placeholder="Enter use case name"
                 />
               </div>
@@ -186,13 +186,13 @@ export function UseCasesManagementPage() {
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors"
+                  className="px-4 py-2 border border-border rounded-lg hover:bg-muted hover:shadow-sm transition-all duration-150 ease-out"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 hover:shadow-md transition-all duration-150 ease-out"
                 >
                   {editingUseCase ? "Update" : "Create"}
                 </button>

@@ -75,28 +75,28 @@ export function AdminDashboard() {
         <div className="flex gap-2 flex-wrap">
           <Link
             to="/admin/categories"
-            className="px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors flex items-center gap-2"
+            className="px-4 py-2 border border-border rounded-lg hover:bg-accent hover:shadow-sm transition-all duration-150 ease-out flex items-center gap-2"
           >
             <Folder className="w-4 h-4" />
             Categories
           </Link>
           <Link
             to="/admin/use-cases"
-            className="px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors flex items-center gap-2"
+            className="px-4 py-2 border border-border rounded-lg hover:bg-accent hover:shadow-sm transition-all duration-150 ease-out flex items-center gap-2"
           >
             <Tag className="w-4 h-4" />
             Use Cases
           </Link>
           <Link
             to="/admin/analytics"
-            className="px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors flex items-center gap-2"
+            className="px-4 py-2 border border-border rounded-lg hover:bg-accent hover:shadow-sm transition-all duration-150 ease-out flex items-center gap-2"
           >
             <BarChart3 className="w-4 h-4" />
             Analytics
           </Link>
           <Link
             to="/admin/products/new"
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 hover:shadow-md transition-all duration-150 ease-out flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Add Product
@@ -106,23 +106,23 @@ export function AdminDashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-card rounded-lg border p-4">
+        <div className="bg-card rounded-lg border p-4 hover:shadow-md transition-all duration-200 ease-in-out">
           <h3 className="text-sm font-medium text-muted-foreground">Total Products</h3>
           <p className="text-2xl font-bold">{products.length}</p>
         </div>
-        <div className="bg-card rounded-lg border p-4">
+        <div className="bg-card rounded-lg border p-4 hover:shadow-md transition-all duration-200 ease-in-out">
           <h3 className="text-sm font-medium text-muted-foreground">Published</h3>
           <p className="text-2xl font-bold">
             {products.filter(p => p.status === "PUBLISHED").length}
           </p>
         </div>
-        <div className="bg-card rounded-lg border p-4">
+        <div className="bg-card rounded-lg border p-4 hover:shadow-md transition-all duration-200 ease-in-out">
           <h3 className="text-sm font-medium text-muted-foreground">Drafts</h3>
           <p className="text-2xl font-bold">
             {products.filter(p => p.status === "DRAFT").length}
           </p>
         </div>
-        <div className="bg-card rounded-lg border p-4">
+        <div className="bg-card rounded-lg border p-4 hover:shadow-md transition-all duration-200 ease-in-out">
           <h3 className="text-sm font-medium text-muted-foreground">Archived</h3>
           <p className="text-2xl font-bold">
             {products.filter(p => p.status === "ARCHIVED").length}
@@ -136,10 +136,10 @@ export function AdminDashboard() {
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
-            className={`px-3 py-1 rounded-lg text-sm capitalize ${
+            className={`px-3 py-1 rounded-lg text-sm capitalize transition-all duration-150 ease-out ${
               statusFilter === status
-                ? "bg-primary text-primary-foreground"
-                : "bg-accent hover:bg-accent/80"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "bg-accent hover:bg-accent/80 hover:shadow-sm"
             }`}
           >
             {status === "all" ? "all" : status.toLowerCase()}
@@ -168,7 +168,7 @@ export function AdminDashboard() {
                 </tr>
               ) : (
                 filteredProducts.map((product) => (
-                  <tr key={product.id} className="border-t">
+                  <tr key={product.id} className="border-t hover:bg-accent/50 transition-colors duration-150">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden flex-shrink-0">
@@ -206,21 +206,21 @@ export function AdminDashboard() {
                       <div className="flex items-center gap-2">
                         <Link
                           to={`/products/${product.id}`}
-                          className="p-1 hover:bg-accent rounded"
+                          className="p-1 hover:bg-accent rounded transition-all duration-150 ease-out hover:scale-110"
                           title="View"
                         >
                           <Eye className="w-4 h-4" />
                         </Link>
                         <Link
                           to={`/admin/products/${product.id}/edit`}
-                          className="p-1 hover:bg-accent rounded"
+                          className="p-1 hover:bg-accent rounded transition-all duration-150 ease-out hover:scale-110"
                           title="Edit"
                         >
                           <Edit className="w-4 h-4" />
                         </Link>
                         <button
                           onClick={() => handleDelete(product.id)}
-                          className="p-1 hover:bg-accent rounded text-destructive"
+                          className="p-1 hover:bg-accent rounded text-destructive transition-all duration-150 ease-out hover:scale-110"
                           title="Delete"
                         >
                           <Trash2 className="w-4 h-4" />

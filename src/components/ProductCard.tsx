@@ -10,7 +10,7 @@ interface ProductCardProps {
 export function ProductCard({ product, view = "grid" }: ProductCardProps) {
   if (view === "list") {
     return (
-      <div className="bg-card rounded-lg border p-4 hover:shadow-md transition-shadow">
+      <div className="bg-card rounded-lg border p-4 hover:shadow-md transition-all duration-200 ease-in-out hover:-translate-y-0.5">
         <div className="flex gap-4">
           <div className="w-24 h-24 bg-muted rounded-lg flex-shrink-0 overflow-hidden">
             {product.images && product.images[0] && (
@@ -24,7 +24,7 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
           <div className="flex-1 min-w-0">
             <Link
               to={`/products/${product.id}`}
-              className="text-lg font-semibold hover:text-primary transition-colors line-clamp-1"
+              className="text-lg font-semibold hover:text-primary transition-all duration-150 ease-out line-clamp-1"
             >
               {product.name}
             </Link>
@@ -34,7 +34,7 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
             <div className="flex items-center gap-2 mt-3">
               <Link
                 to={`/products/${product.id}`}
-                className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 transition-colors"
+                className="px-3 py-1 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 hover:shadow-sm transition-all duration-150 ease-out"
               >
                 View Details
               </Link>
@@ -42,7 +42,7 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
                 href={product.affiliateUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3 py-1 border border-border rounded-md text-sm hover:bg-accent transition-colors flex items-center gap-1"
+                className="px-3 py-1 border border-border rounded-md text-sm hover:bg-accent hover:shadow-sm transition-all duration-150 ease-out flex items-center gap-1"
               >
                 Visit Site <ExternalLink className="w-3 h-3" />
               </a>
@@ -54,7 +54,7 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
   }
 
   return (
-    <div className="bg-card rounded-lg border overflow-hidden hover:shadow-md transition-shadow">
+    <div className="bg-card rounded-lg border overflow-hidden hover:shadow-md transition-all duration-200 ease-in-out hover:-translate-y-1">
       <div className="aspect-video bg-muted overflow-hidden">
         {product.images && product.images[0] && (
           <ProductImage
@@ -67,7 +67,7 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
       <div className="p-4">
         <Link
           to={`/products/${product.id}`}
-          className="text-lg font-semibold hover:text-primary transition-colors line-clamp-2"
+          className="text-lg font-semibold hover:text-primary transition-all duration-150 ease-out line-clamp-2"
         >
           {product.name}
         </Link>
@@ -77,7 +77,7 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
         <div className="flex items-center gap-2 mt-4">
           <Link
             to={`/products/${product.id}`}
-            className="flex-1 px-3 py-2 bg-primary text-primary-foreground rounded-md text-sm text-center hover:bg-primary/90 transition-colors"
+            className="flex-1 px-3 py-2 bg-primary text-primary-foreground rounded-md text-sm text-center hover:bg-primary/90 hover:shadow-sm transition-all duration-150 ease-out"
           >
             View Details
           </Link>
@@ -85,7 +85,7 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
             href={product.affiliateUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-2 border border-border rounded-md text-sm hover:bg-accent transition-colors"
+            className="px-3 py-2 border border-border rounded-md text-sm hover:bg-accent hover:shadow-sm transition-all duration-150 ease-out"
           >
             <ExternalLink className="w-4 h-4" />
           </a>
