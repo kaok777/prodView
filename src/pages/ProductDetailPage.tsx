@@ -6,7 +6,7 @@ import { ProductImage } from "../components/ProductImage";
 import { SEOHead } from "../components/SEOHead";
 import { useAnalytics, useAffiliateTracking } from "../hooks/useAnalytics";
 import { generateProductStructuredData } from "../utils/seo";
-import api, { API_BASE_URL } from "../lib/api";
+import api, { BACKEND_BASE_URL } from "../lib/api";
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -109,7 +109,7 @@ export function ProductDetailPage() {
   };
 
   const imageUrl = product.images && product.images[0]
-    ? `${API_BASE_URL}${product.images[0]}`
+    ? `${BACKEND_BASE_URL}${product.images[0]}`
     : undefined;
 
   const structuredData = generateProductStructuredData(product, imageUrl);

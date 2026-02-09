@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Edit, Trash2, Eye, BarChart3 } from "lucide-react";
+import { Plus, Edit, Trash2, Eye, BarChart3, Folder, Tag } from "lucide-react";
 import { ProductImage } from "../../components/ProductImage";
 import api from "../../lib/api";
 
@@ -70,9 +70,23 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Link
+            to="/admin/categories"
+            className="px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors flex items-center gap-2"
+          >
+            <Folder className="w-4 h-4" />
+            Categories
+          </Link>
+          <Link
+            to="/admin/use-cases"
+            className="px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors flex items-center gap-2"
+          >
+            <Tag className="w-4 h-4" />
+            Use Cases
+          </Link>
           <Link
             to="/admin/analytics"
             className="px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors flex items-center gap-2"

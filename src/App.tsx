@@ -10,6 +10,8 @@ import { AdminLoginPage } from "./pages/admin/AdminLoginPage";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { ProductEditorPage } from "./pages/admin/ProductEditorPage";
 import { AdminAnalytics } from "./pages/admin/AdminAnalytics";
+import { CategoriesManagementPage } from "./pages/admin/CategoriesManagementPage";
+import { UseCasesManagementPage } from "./pages/admin/UseCasesManagementPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export default function App() {
@@ -57,6 +59,26 @@ export default function App() {
                 <ProtectedRoute>
                   <Layout>
                     <ProductEditorPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/categories"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CategoriesManagementPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/use-cases"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <UseCasesManagementPage />
                   </Layout>
                 </ProtectedRoute>
               }

@@ -2,6 +2,9 @@ import axios from 'axios';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
+// Backend base URL without /api suffix for static assets (e.g., /uploads/)
+export const BACKEND_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, '');
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
