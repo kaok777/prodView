@@ -45,12 +45,12 @@ export class CreateProductDto {
   @IsArray({ message: 'Category IDs must be an array' })
   @IsUUID('4', { each: true, message: 'Each category ID must be a valid UUID' })
   @ArrayMaxSize(10, { message: 'Cannot assign more than 10 categories' })
-  categories!: string[];
+  categoryIds!: string[];
 
   @IsArray({ message: 'Use case IDs must be an array' })
   @IsUUID('4', { each: true, message: 'Each use case ID must be a valid UUID' })
   @ArrayMaxSize(10, { message: 'Cannot assign more than 10 use cases' })
-  useCases!: string[];
+  useCaseIds!: string[];
 
   @IsArray({ message: 'Images must be an array' })
   @IsString({ each: true, message: 'Each image path must be a string' })

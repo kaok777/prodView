@@ -331,8 +331,8 @@ export class ProductsService {
       name: string;
       description: string;
       affiliateUrl: string;
-      categories: string[];
-      useCases: string[];
+      categoryIds: string[];
+      useCaseIds: string[];
       images: string[];
     },
   ) {
@@ -351,11 +351,11 @@ export class ProductsService {
       throw new BadRequestException(`Invalid URL: ${urlValidation.error}`);
     }
 
-    if (data.categories.length > 10) {
+    if (data.categoryIds.length > 10) {
       throw new BadRequestException('Too many categories');
     }
 
-    if (data.useCases.length > 10) {
+    if (data.useCaseIds.length > 10) {
       throw new BadRequestException('Too many use cases');
     }
 
@@ -373,12 +373,12 @@ export class ProductsService {
         createdById: adminId,
         updatedById: adminId,
         categories: {
-          create: data.categories.map((categoryId) => ({
+          create: data.categoryIds.map((categoryId) => ({
             categoryId,
           })),
         },
         useCases: {
-          create: data.useCases.map((useCaseId) => ({
+          create: data.useCaseIds.map((useCaseId) => ({
             useCaseId,
           })),
         },
@@ -429,8 +429,8 @@ export class ProductsService {
       name?: string;
       description?: string;
       affiliateUrl?: string;
-      categories?: string[];
-      useCases?: string[];
+      categoryIds?: string[];
+      useCaseIds?: string[];
       images?: string[];
       status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
     },
@@ -464,11 +464,11 @@ export class ProductsService {
       }
     }
 
-    if (data.categories !== undefined && data.categories.length > 10) {
+    if (data.categoryIds !== undefined && data.categoryIds.length > 10) {
       throw new BadRequestException('Too many categories');
     }
 
-    if (data.useCases !== undefined && data.useCases.length > 10) {
+    if (data.useCaseIds !== undefined && data.useCaseIds.length > 10) {
       throw new BadRequestException('Too many use cases');
     }
 
@@ -477,13 +477,13 @@ export class ProductsService {
     }
 
     // Only update relations if provided
-    if (data.categories !== undefined) {
+    if (data.categoryIds !== undefined) {
       await this.prisma.productCategory.deleteMany({
         where: { productId },
       });
     }
 
-    if (data.useCases !== undefined) {
+    if (data.useCaseIds !== undefined) {
       await this.prisma.productUseCase.deleteMany({
         where: { productId },
       });
@@ -510,17 +510,17 @@ export class ProductsService {
       updateData.status = data.status;
     }
 
-    if (data.categories !== undefined) {
+    if (data.categoryIds !== undefined) {
       updateData.categories = {
-        create: data.categories.map((categoryId) => ({
+        create: data.categoryIds.map((categoryId) => ({
           categoryId,
         })),
       };
     }
 
-    if (data.useCases !== undefined) {
+    if (data.useCaseIds !== undefined) {
       updateData.useCases = {
-        create: data.useCases.map((useCaseId) => ({
+        create: data.useCaseIds.map((useCaseId) => ({
           useCaseId,
         })),
       };
