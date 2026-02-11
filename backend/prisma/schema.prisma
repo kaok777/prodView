@@ -13,7 +13,7 @@ model Product {
   description String
   affiliateUrl String
   images      String[]
-  videos      String[]
+  views       Int      @default(0)
   status      ProductStatus @default(DRAFT)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -29,7 +29,9 @@ model Product {
   @@index([status])
   @@index([createdAt])
   @@index([updatedAt])
+  @@index([views])
   @@index([status, createdAt])
+  @@index([status, views])
   @@map("products")
 }
 

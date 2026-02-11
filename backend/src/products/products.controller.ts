@@ -53,11 +53,13 @@ export class ProductsController {
   getProductsByCategory(
     @Param('categoryId', new ParseUUIDPipe({ version: '4' })) categoryId: string,
     @Query() paginationDto: PaginationDto,
+    @Query('sortBy') sortBy?: string,
   ) {
     return this.productsService.getProductsByCategory(
       categoryId,
       paginationDto.page || 1,
       paginationDto.pageSize || 20,
+      sortBy || 'latest',
     );
   }
 
@@ -67,11 +69,13 @@ export class ProductsController {
   getProductsByUseCase(
     @Param('useCaseId', new ParseUUIDPipe({ version: '4' })) useCaseId: string,
     @Query() paginationDto: PaginationDto,
+    @Query('sortBy') sortBy?: string,
   ) {
     return this.productsService.getProductsByUseCase(
       useCaseId,
       paginationDto.page || 1,
       paginationDto.pageSize || 20,
+      sortBy || 'latest',
     );
   }
 

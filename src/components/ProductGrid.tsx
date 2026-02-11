@@ -33,11 +33,11 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
           });
         } else if (categoryId) {
           response = await api.get(`/products/category/${categoryId}`, {
-            params: { page: 1, pageSize: 40 }
+            params: { page: 1, pageSize: 40, sortBy }
           });
         } else if (useCaseId) {
           response = await api.get(`/products/use-case/${useCaseId}`, {
-            params: { page: 1, pageSize: 40 }
+            params: { page: 1, pageSize: 40, sortBy }
           });
         } else {
           response = await api.get('/products/latest', {
@@ -77,11 +77,11 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
         });
       } else if (categoryId) {
         response = await api.get(`/products/category/${categoryId}`, {
-          params: { page: nextPage, pageSize: 40 }
+          params: { page: nextPage, pageSize: 40, sortBy }
         });
       } else if (useCaseId) {
         response = await api.get(`/products/use-case/${useCaseId}`, {
-          params: { page: nextPage, pageSize: 40 }
+          params: { page: nextPage, pageSize: 40, sortBy }
         });
       }
 
@@ -126,13 +126,13 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
            "Latest Products"}
         </h2>
         <div className="flex items-center gap-2">
-          {/* Sort Filter - only show for category filter */}
-          {categoryId && (
+          {/* Sort Filter - show for category or use case filter */}
+          {(categoryId || useCaseId) && (
             <div className="relative">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="appearance-none px-4 py-2 pr-10 rounded-lg border border-border bg-background hover:bg-accent transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary"
+                className="appearance-none px-4 py-2 pr-10 rounded-lg border border-border bg-background text-foreground hover:bg-accent transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="latest">Latest</option>
                 <option value="mostViewed">Most Viewed</option>

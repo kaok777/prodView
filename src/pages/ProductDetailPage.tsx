@@ -96,20 +96,17 @@ export function ProductDetailPage() {
     );
   }
 
-  const allMedia = [
-    ...(product?.images || []).map((path: string) => ({ type: 'image', path })),
-    ...(product?.videos || []).map((path: string) => ({ type: 'video', path }))
-  ];
+  const images = product?.images || [];
 
-  const nextMedia = () => {
+  const nextImage = () => {
     setCurrentMediaIndex((prev) =>
-      prev === allMedia.length - 1 ? 0 : prev + 1
+      prev === images.length - 1 ? 0 : prev + 1
     );
   };
 
-  const prevMedia = () => {
+  const prevImage = () => {
     setCurrentMediaIndex((prev) =>
-      prev === 0 ? allMedia.length - 1 : prev - 1
+      prev === 0 ? images.length - 1 : prev - 1
     );
   };
 
@@ -138,34 +135,26 @@ export function ProductDetailPage() {
           <span className="text-foreground">{product.name}</span>
         </nav>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-2 gap-8 md:items-center">
           <div className="space-y-4">
             <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-              {allMedia.length > 0 && (
+              {images.length > 0 && (
                 <>
-                  {allMedia[currentMediaIndex].type === 'image' ? (
-                    <ProductImage
-                      imagePath={allMedia[currentMediaIndex].path}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <video
-                      src={`${BACKEND_BASE_URL}${allMedia[currentMediaIndex].path}`}
-                      controls
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                  {allMedia.length > 1 && (
+                  <ProductImage
+                    imagePath={images[currentMediaIndex]}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                  {images.length > 1 && (
                     <>
                       <button
-                        onClick={prevMedia}
+                        onClick={prevImage}
                         className="absolute left-2 top-1/2 transform -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={nextMedia}
+                        onClick={nextImage}
                         className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
                       >
                         <ChevronRight className="w-4 h-4" />
@@ -176,9 +165,9 @@ export function ProductDetailPage() {
               )}
             </div>
 
-            {allMedia.length > 1 && (
+            {images.length > 1 && (
               <div className="flex gap-2 overflow-x-auto pb-2">
-                {allMedia.map((media: any, index: number) => (
+                {images.map((imagePath: string, index: number) => (
                   <button
                     key={index}
                     onClick={() => setCurrentMediaIndex(index)}
@@ -186,25 +175,11 @@ export function ProductDetailPage() {
                       index === currentMediaIndex ? "border-primary" : "border-transparent"
                     }`}
                   >
-                    {media.type === 'image' ? (
-                      <ProductImage
-                        imagePath={media.path}
-                        alt={`${product.name} ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="relative w-full h-full bg-black flex items-center justify-center">
-                        <video
-                          src={`${BACKEND_BASE_URL}${media.path}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                          <div className="w-6 h-6 border-2 border-white rounded-full flex items-center justify-center">
-                            <div className="w-0 h-0 border-t-4 border-t-transparent border-l-6 border-l-white border-b-4 border-b-transparent ml-1"></div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    <ProductImage
+                      imagePath={imagePath}
+                      alt={`${product.name} ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
                   </button>
                 ))}
               </div>
