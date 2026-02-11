@@ -29,7 +29,7 @@ export class CreateProductDto {
 
   @IsString({ message: 'Description must be a string' })
   @MinLength(10, { message: 'Description must be at least 10 characters long' })
-  @MaxLength(2000, { message: 'Description must not exceed 2000 characters' })
+  @MaxLength(10000, { message: 'Description must not exceed 10000 characters' })
   description!: string;
 
   @IsUrl({ require_protocol: true, protocols: ['http', 'https'] }, {
@@ -56,4 +56,10 @@ export class CreateProductDto {
   @IsString({ each: true, message: 'Each image path must be a string' })
   @ArrayMaxSize(20, { message: 'Cannot upload more than 20 images' })
   images!: string[];
+
+  @IsOptional()
+  @IsArray({ message: 'Videos must be an array' })
+  @IsString({ each: true, message: 'Each video path must be a string' })
+  @ArrayMaxSize(10, { message: 'Cannot upload more than 10 videos' })
+  videos?: string[];
 }

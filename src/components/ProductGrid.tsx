@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ProductCard } from "./ProductCard";
-import { Grid, List, Loader2 } from "lucide-react";
+import { Grid, List, Loader2, ChevronDown } from "lucide-react";
 import api from "../lib/api";
 
 interface ProductGridProps {
@@ -9,8 +9,11 @@ interface ProductGridProps {
   searchQuery?: string;
 }
 
+type SortOption = "latest" | "mostViewed";
+
 export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridProps) {
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [sortBy, setSortBy] = useState<SortOption>("latest");
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -58,7 +61,7 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
     };
 
     fetchProducts();
-  }, [categoryId, useCaseId, searchQuery]);
+  }, [categoryId, useCaseId, searchQuery, sortBy]);
 
   const handleLoadMore = async () => {
     if (loadingMore || page >= totalPages) return;
@@ -115,7 +118,7 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <h2 className="text-2xl font-bold">
           {searchQuery ? `Search results for "${searchQuery}"` :
            categoryId ? "Category Products" :
@@ -123,15 +126,31 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
            "Latest Products"}
         </h2>
         <div className="flex items-center gap-2">
+          {/* Sort Filter - only show for category filter */}
+          {categoryId && (
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="appearance-none px-4 py-2 pr-10 rounded-lg border border-border bg-background hover:bg-accent transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="latest">Latest</option>
+                <option value="mostViewed">Most Viewed</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            </div>
+          )}
           <button
             onClick={() => setView("grid")}
             className={`p-2 rounded-lg ${view === "grid" ? "bg-primary text-primary-foreground" : "bg-accent"}`}
+            aria-label="Grid view"
           >
             <Grid className="w-4 h-4" />
           </button>
           <button
             onClick={() => setView("list")}
             className={`p-2 rounded-lg ${view === "list" ? "bg-primary text-primary-foreground" : "bg-accent"}`}
+            aria-label="List view"
           >
             <List className="w-4 h-4" />
           </button>

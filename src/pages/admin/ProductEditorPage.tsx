@@ -17,6 +17,7 @@ export function ProductEditorPage() {
     categoryIds: [] as string[],
     useCaseIds: [] as string[],
     images: [] as string[],
+    videos: [] as string[],
     status: "DRAFT" as "DRAFT" | "PUBLISHED" | "ARCHIVED"
   });
 
@@ -48,6 +49,7 @@ export function ProductEditorPage() {
             categoryIds: product.categories?.map((c: any) => c.category?.id || c.id) || [],
             useCaseIds: product.useCases?.map((u: any) => u.useCase?.id || u.id) || [],
             images: product.images || [],
+            videos: product.videos || [],
             status: product.status || "DRAFT"
           });
         }
@@ -81,29 +83,68 @@ export function ProductEditorPage() {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     try {
       setUploading(true);
-      const formData = new FormData();
-      formData.append('file', file);
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', file);
 
-      const response = await api.post('/upload/image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+        const response = await api.post('/upload/image', formDataUpload, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        return response.data.path;
       });
+
+      const uploadedPaths = await Promise.all(uploadPromises);
 
       setFormData(prev => ({
         ...prev,
-        images: [...prev.images, response.data.path]
+        images: [...prev.images, ...uploadedPaths]
       }));
 
-      toast.success("Image uploaded successfully");
+      toast.success(`${uploadedPaths.length} image(s) uploaded successfully`);
     } catch (error: any) {
-      console.error('Failed to upload image:', error);
-      toast.error(error.response?.data?.message || "Failed to upload image");
+      console.error('Failed to upload images:', error);
+      toast.error(error.response?.data?.message || "Failed to upload images");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      setUploading(true);
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', file);
+
+        const response = await api.post('/upload/image', formDataUpload, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        return response.data.path;
+      });
+
+      const uploadedPaths = await Promise.all(uploadPromises);
+
+      setFormData(prev => ({
+        ...prev,
+        videos: [...prev.videos, ...uploadedPaths]
+      }));
+
+      toast.success(`${uploadedPaths.length} video(s) uploaded successfully`);
+    } catch (error: any) {
+      console.error('Failed to upload videos:', error);
+      toast.error(error.response?.data?.message || "Failed to upload videos");
     } finally {
       setUploading(false);
     }
@@ -113,6 +154,13 @@ export function ProductEditorPage() {
     setFormData(prev => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index)
+    }));
+  };
+
+  const removeVideo = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      videos: prev.videos.filter((_, i) => i !== index)
     }));
   };
 
@@ -179,16 +227,20 @@ export function ProductEditorPage() {
 
             <div>
               <label className="block text-sm font-medium mb-2">
-                Description *
+                Description * (max 10,000 characters)
               </label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 required
-                rows={4}
+                maxLength={10000}
+                rows={6}
                 className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out placeholder:text-muted-foreground resize-vertical"
                 placeholder="Enter product description"
               />
+              <div className="text-xs text-muted-foreground text-right mt-1">
+                {formData.description.length} / 10,000
+              </div>
             </div>
 
             <div>
@@ -287,48 +339,110 @@ export function ProductEditorPage() {
           </div>
         </div>
 
-        {/* Images */}
-        <div>
-          <label className="block text-sm font-medium mb-2">
-            Product Images
-          </label>
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <label className={`flex items-center gap-2 px-4 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent hover:shadow-sm transition-all duration-200 ease-in-out ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                <Upload className="w-4 h-4" />
-                {uploading ? "Uploading..." : "Upload Image"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  disabled={uploading}
-                  className="hidden"
-                />
-              </label>
-            </div>
-
-            {formData.images.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {formData.images.map((imagePath, index) => (
-                  <div key={index} className="relative group">
-                    <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                      <ProductImage
-                        imagePath={imagePath}
-                        alt={`Product image ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 ease-in-out hover:scale-110"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
+        {/* Media Upload Section */}
+        <div className="space-y-6">
+          {/* Images */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Product Images (Max 20)
+            </label>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <label className={`flex items-center gap-2 px-4 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent hover:shadow-sm transition-all duration-200 ease-in-out ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <Upload className="w-4 h-4" />
+                  {uploading ? "Uploading..." : "Upload Images"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-sm text-muted-foreground">
+                  {formData.images.length} / 20 uploaded
+                </span>
               </div>
-            )}
+
+              {formData.images.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {formData.images.map((imagePath, index) => (
+                    <div key={index} className="relative group">
+                      <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                        <ProductImage
+                          imagePath={imagePath}
+                          alt={`Product image ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 ease-in-out hover:scale-110"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded">
+                        {index + 1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Videos */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Product Videos (Max 10)
+            </label>
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <label className={`flex items-center gap-2 px-4 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent hover:shadow-sm transition-all duration-200 ease-in-out ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <Upload className="w-4 h-4" />
+                  {uploading ? "Uploading..." : "Upload Videos"}
+                  <input
+                    type="file"
+                    accept="video/*"
+                    multiple
+                    onChange={handleVideoUpload}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-sm text-muted-foreground">
+                  {formData.videos.length} / 10 uploaded
+                </span>
+              </div>
+
+              {formData.videos.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {formData.videos.map((videoPath, index) => (
+                    <div key={index} className="relative group">
+                      <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                        <video
+                          src={`${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000'}${videoPath}`}
+                          className="w-full h-full object-cover"
+                          controls
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeVideo(index)}
+                        className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 ease-in-out hover:scale-110"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded">
+                        Video {index + 1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

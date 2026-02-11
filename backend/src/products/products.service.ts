@@ -334,6 +334,8 @@ export class ProductsService {
       categoryIds: string[];
       useCaseIds: string[];
       images: string[];
+      videos?: string[];
+      status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
     },
   ) {
     const nameValidation = this.validationService.validateInput('text', data.name);
@@ -363,13 +365,18 @@ export class ProductsService {
       throw new BadRequestException('Too many images');
     }
 
+    if (data.videos && data.videos.length > 10) {
+      throw new BadRequestException('Too many videos');
+    }
+
     const product = await this.prisma.product.create({
       data: {
         name: data.name.trim(),
         description: data.description.trim(),
         affiliateUrl: data.affiliateUrl.trim(),
         images: data.images,
-        status: 'DRAFT',
+        videos: data.videos || [],
+        status: data.status || 'DRAFT',
         createdById: adminId,
         updatedById: adminId,
         categories: {
@@ -432,6 +439,7 @@ export class ProductsService {
       categoryIds?: string[];
       useCaseIds?: string[];
       images?: string[];
+      videos?: string[];
       status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
     },
   ) {
@@ -476,6 +484,10 @@ export class ProductsService {
       throw new BadRequestException('Too many images');
     }
 
+    if (data.videos !== undefined && data.videos.length > 10) {
+      throw new BadRequestException('Too many videos');
+    }
+
     // Only update relations if provided
     if (data.categoryIds !== undefined) {
       await this.prisma.productCategory.deleteMany({
@@ -505,6 +517,9 @@ export class ProductsService {
     }
     if (data.images !== undefined) {
       updateData.images = data.images;
+    }
+    if (data.videos !== undefined) {
+      updateData.videos = data.videos;
     }
     if (data.status !== undefined) {
       updateData.status = data.status;

@@ -26,12 +26,12 @@ export function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b h-16 flex items-center px-4">
-      <div className="flex items-center gap-4 flex-1">
-        <Link to="/" className="text-2xl font-bold text-primary">
+      <div className="container mx-auto flex items-center justify-between gap-4">
+        <Link to="/" className="text-2xl font-bold text-primary whitespace-nowrap">
           ProdView
         </Link>
-        
-        <form onSubmit={handleSearch} className="flex-1 max-w-md mx-4">
+
+        <form onSubmit={handleSearch} className="flex-1 max-w-2xl">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <input
@@ -43,9 +43,8 @@ export function Navbar() {
             />
           </div>
         </form>
-      </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 whitespace-nowrap">
         <button
           onClick={toggleTheme}
           className="p-2 rounded-lg hover:bg-accent"
@@ -70,6 +69,7 @@ export function Navbar() {
             Admin
           </Link>
         )}
+      </div>
       </div>
     </nav>
   );

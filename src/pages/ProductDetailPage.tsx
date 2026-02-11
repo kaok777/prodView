@@ -10,12 +10,12 @@ import api, { BACKEND_BASE_URL } from "../lib/api";
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [product, setProduct] = useState<any>(null);
   const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { track } = useAnalytics();
-  const { trackClick } = useAffiliateTracking();
+  const { trackClick} = useAffiliateTracking();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -96,15 +96,20 @@ export function ProductDetailPage() {
     );
   }
 
-  const nextImage = () => {
-    setCurrentImageIndex((prev) =>
-      prev === product.images.length - 1 ? 0 : prev + 1
+  const allMedia = [
+    ...(product?.images || []).map((path: string) => ({ type: 'image', path })),
+    ...(product?.videos || []).map((path: string) => ({ type: 'video', path }))
+  ];
+
+  const nextMedia = () => {
+    setCurrentMediaIndex((prev) =>
+      prev === allMedia.length - 1 ? 0 : prev + 1
     );
   };
 
-  const prevImage = () => {
-    setCurrentImageIndex((prev) =>
-      prev === 0 ? product.images.length - 1 : prev - 1
+  const prevMedia = () => {
+    setCurrentMediaIndex((prev) =>
+      prev === 0 ? allMedia.length - 1 : prev - 1
     );
   };
 
@@ -136,23 +141,31 @@ export function ProductDetailPage() {
         <div className="grid md:grid-cols-2 gap-8">
           <div className="space-y-4">
             <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
-              {product.images && product.images.length > 0 && (
+              {allMedia.length > 0 && (
                 <>
-                  <ProductImage
-                    imagePath={product.images[currentImageIndex]}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
-                  />
-                  {product.images.length > 1 && (
+                  {allMedia[currentMediaIndex].type === 'image' ? (
+                    <ProductImage
+                      imagePath={allMedia[currentMediaIndex].path}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <video
+                      src={`${BACKEND_BASE_URL}${allMedia[currentMediaIndex].path}`}
+                      controls
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                  {allMedia.length > 1 && (
                     <>
                       <button
-                        onClick={prevImage}
+                        onClick={prevMedia}
                         className="absolute left-2 top-1/2 transform -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={nextImage}
+                        onClick={nextMedia}
                         className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors"
                       >
                         <ChevronRight className="w-4 h-4" />
@@ -163,21 +176,35 @@ export function ProductDetailPage() {
               )}
             </div>
 
-            {product.images && product.images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto">
-                {product.images.map((imagePath: string, index: number) => (
+            {allMedia.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {allMedia.map((media: any, index: number) => (
                   <button
                     key={index}
-                    onClick={() => setCurrentImageIndex(index)}
+                    onClick={() => setCurrentMediaIndex(index)}
                     className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${
-                      index === currentImageIndex ? "border-primary" : "border-transparent"
+                      index === currentMediaIndex ? "border-primary" : "border-transparent"
                     }`}
                   >
-                    <ProductImage
-                      imagePath={imagePath}
-                      alt={`${product.name} ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+                    {media.type === 'image' ? (
+                      <ProductImage
+                        imagePath={media.path}
+                        alt={`${product.name} ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="relative w-full h-full bg-black flex items-center justify-center">
+                        <video
+                          src={`${BACKEND_BASE_URL}${media.path}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                          <div className="w-6 h-6 border-2 border-white rounded-full flex items-center justify-center">
+                            <div className="w-0 h-0 border-t-4 border-t-transparent border-l-6 border-l-white border-b-4 border-b-transparent ml-1"></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
@@ -187,9 +214,11 @@ export function ProductDetailPage() {
           <div className="space-y-6">
             <div>
               <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
-              <p className="text-muted-foreground leading-relaxed">
-                {product.description}
-              </p>
+              <div className="max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                  {product.description}
+                </p>
+              </div>
             </div>
 
             <div className="space-y-3">
