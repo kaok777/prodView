@@ -1,143 +1,93 @@
-# Project Execution Prompt Roadmap
-
-**Generated:** February 12, 2026
+# ProdView Production Stabilization Prompts
+**Generated:** February 12, 2026 (Post-Critical-Fixes Update)
 **Source Audit:** projectAudit_12022026.md
-**Purpose:** Sequential fixes for ProdView production readiness
-
-**Instructions:**
-- Execute prompts in order (critical first)
-- Complete each phase before moving to next
-- Verify changes with tests after each prompt
-- Do not skip verification steps
+**Purpose:** Systematic remediation of remaining production blockers
 
 ---
 
-## Phase 1 – Critical Stability
+## Execution Instructions
 
-====================================================================
-======================== MASTER PROMPT 1 =============================
-====================================================================
+**IMPORTANT:**
+- Execute prompts in priority order (Critical → High → Medium)
+- DO NOT skip Critical or High priority prompts
+- Medium priority prompts are recommended before launch
+- Test after each prompt execution
+- Commit after each successful fix
+- DO NOT start servers during implementation
+- Verify all changes compile before marking complete
 
-**Objective:** Fix admin inability to edit DRAFT/ARCHIVED products
+**Recent Fixes Completed (Current Session):**
+✅ Route ordering conflict fixed
+✅ DTO validation aligned
+✅ TypeScript compilation errors resolved
+✅ Category/Use Case filtering working
+✅ Admin dashboard loading working
 
-**Problem Analysis:**
-You must investigate why admins cannot edit products with DRAFT or ARCHIVED status.
+---
 
-**Required Investigation:**
-1. Read `backend/src/products/products.service.ts` lines 62-91
-2. Examine the `getProductById` method
-3. Identify the status filter logic
-4. Read `src/pages/admin/ProductEditorPage.tsx` lines 40-52
-5. Identify which endpoint is used for fetching product data in edit mode
+## 🔴 CRITICAL PRIORITY
 
-**Expected Finding:**
-The `getProductById` method only returns products with `status === 'PUBLISHED'`. When admin tries to edit a DRAFT product using GET `/api/products/:id`, it returns null.
+### MASTER PROMPT 1: Remove Hardcoded Admin Credentials
 
-**Implementation Required:**
+**Status:** 🔴 BLOCKS PRODUCTION DEPLOYMENT
 
-**Backend Changes:**
+**Objective:**
+Eliminate hardcoded admin credentials from source code and implement secure credential generation system.
 
-File: `backend/src/products/products.controller.ts`
+**Context:**
+Default admin credentials are currently hardcoded in `backend/src/auth/auth.service.ts:106-132`. This creates a critical security vulnerability where anyone with repository access can compromise the admin account. The credentials are permanently exposed in git history.
 
-Add a new admin-specific endpoint BEFORE the existing `@Get(':id')` route (route order matters):
-
+**Problem Description:**
 ```typescript
-@Roles('admin')
-@Get('admin/:id')
-@Throttle({ default: { limit: 200, ttl: 60000 } })
-getProductByIdAdmin(
-  @Param('id', new ParseUUIDPipe({ version: '4' })) id: string
-) {
-  return this.productsService.getProductByIdAdmin(id);
-}
+// Current code (INSECURE):
+const defaultEmail = 'vibrationconnect@gmail.com';  // ❌ HARDCODED
+const defaultPassword = 'Cxserfd345!';               // ❌ HARDCODED
 ```
 
-File: `backend/src/products/products.service.ts`
-
-Add new method (place near `getProductById`):
-
-```typescript
-async getProductByIdAdmin(productId: string) {
-  return this.prisma.product.findUnique({
-    where: { id: productId },
-    include: {
-      categories: {
-        include: {
-          category: true,
-        },
-      },
-      useCases: {
-        include: {
-          useCase: true,
-        },
-      },
-    },
-  });
-}
-```
-
-**Frontend Changes:**
-
-File: `src/pages/admin/ProductEditorPage.tsx`
-
-Line 41: Change from:
-```typescript
-const productRes = await api.get(`/products/${id}`);
-```
-
-To:
-```typescript
-const productRes = await api.get(`/products/admin/${id}`);
-```
-
-**Verification Steps:**
-1. Start backend and frontend servers
-2. Login as admin
-3. Create a product with DRAFT status
-4. Navigate to edit page for that product
-5. Verify product data loads correctly
-6. Change product name and save
-7. Verify update succeeds
-8. Repeat test with ARCHIVED product
-
-**Critical Notes:**
-- Route order in controller matters: admin route must come BEFORE the generic `@Get(':id')` route
-- Do NOT modify the existing `getProductById` method (public endpoint)
-- Do NOT add status filtering to the new admin method
-- Ensure ParseUUIDPipe is imported and used correctly
-
-====================================================================
-======================== MASTER PROMPT 2 =============================
-====================================================================
-
-**Objective:** Eliminate hardcoded default admin credentials (security vulnerability)
-
-**Problem Analysis:**
-Default admin credentials are hardcoded in source code, creating a critical security vulnerability. Any attacker with access to the repository can use these credentials to gain admin access.
+This violates OWASP security principles and blocks production deployment.
 
 **Required Investigation:**
 1. Read `backend/src/auth/auth.service.ts` lines 106-132 (`setupFirstAdmin` method)
-2. Read `backend/prisma/seed.ts` lines 10-30
-3. Identify hardcoded credentials
-4. Verify where crypto module is available
+2. Check if `backend/prisma/seed.ts` contains similar hardcoded credentials
+3. Verify `crypto` module is available in Node.js environment
+4. Confirm password complexity requirements (lines 25-28 in login.dto.ts)
 
-**Expected Finding:**
-```typescript
-const defaultEmail = 'vibrationconnect@gmail.com';
-const defaultPassword = 'Cxserfd345!';
-```
+**Fix Requirements:**
 
-**Implementation Required:**
+**Step 1: Create Secure Password Generator**
 
 File: `backend/src/auth/auth.service.ts`
 
-Add at top of file (after imports):
+Add import at top:
 ```typescript
 import * as crypto from 'crypto';
 ```
 
-Replace the entire `setupFirstAdmin` method (lines 106-132) with:
+Add private method after `setupFirstAdmin`:
+```typescript
+private generateSecurePassword(): string {
+  const length = 20;
+  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*-_+=';
+  let password = '';
 
+  const randomBytes = crypto.randomBytes(length);
+  for (let i = 0; i < length; i++) {
+    password += charset[randomBytes[i] % charset.length];
+  }
+
+  // Ensure complexity requirements met
+  if (!/[A-Z]/.test(password)) password = 'A' + password.slice(1);
+  if (!/[a-z]/.test(password)) password = password.slice(0, -1) + 'a';
+  if (!/\d/.test(password)) password = password.slice(0, -1) + '1';
+  if (!/[!@#$%^&*\-_+=]/.test(password)) password = password.slice(0, -1) + '!';
+
+  return password;
+}
+```
+
+**Step 2: Update setupFirstAdmin Method**
+
+Replace entire `setupFirstAdmin` method (lines 106-132):
 ```typescript
 async setupFirstAdmin(): Promise<any> {
   const existingAdmins = await this.prisma.adminUser.count();
@@ -146,6 +96,7 @@ async setupFirstAdmin(): Promise<any> {
     throw new UnauthorizedException('Admin users already exist.');
   }
 
+  // Use environment variables or generate secure password
   const defaultEmail = process.env.FIRST_ADMIN_EMAIL || 'admin@prodview.local';
   const defaultPassword = process.env.FIRST_ADMIN_PASSWORD || this.generateSecurePassword();
 
@@ -160,122 +111,149 @@ async setupFirstAdmin(): Promise<any> {
     },
   });
 
-  // Display credentials ONE TIME ONLY
-  console.log('\n' + '═'.repeat(60));
-  console.log('║' + ' '.repeat(18) + 'FIRST ADMIN CREATED' + ' '.repeat(18) + '║');
-  console.log('═'.repeat(60));
-  console.log('║ Email:    ' + defaultEmail.padEnd(45) + '║');
-  console.log('║ Password: ' + defaultPassword.padEnd(45) + '║');
-  console.log('═'.repeat(60));
-  console.log('║ ⚠️  SAVE THESE CREDENTIALS IMMEDIATELY' + ' '.repeat(19) + '║');
-  console.log('║ ⚠️  CHANGE PASSWORD AFTER FIRST LOGIN' + ' '.repeat(20) + '║');
-  console.log('═'.repeat(60) + '\n');
+  // Display credentials ONE TIME ONLY in console
+  console.log('\n' + '═'.repeat(70));
+  console.log('║' + ' '.repeat(20) + 'FIRST ADMIN CREATED' + ' '.repeat(21) + '║');
+  console.log('═'.repeat(70));
+  console.log('║ Email:    ' + defaultEmail.padEnd(56) + '║');
+  console.log('║ Password: ' + defaultPassword.padEnd(56) + '║');
+  console.log('═'.repeat(70));
+  console.log('║ ⚠️  SAVE THESE CREDENTIALS IMMEDIATELY' + ' '.repeat(30) + '║');
+  console.log('║ ⚠️  CHANGE PASSWORD AFTER FIRST LOGIN' + ' '.repeat(31) + '║');
+  console.log('║ ⚠️  THESE WILL NOT BE SHOWN AGAIN' + ' '.repeat(35) + '║');
+  console.log('═'.repeat(70) + '\n');
 
   return {
     adminId: admin.id,
     email: defaultEmail,
     password: defaultPassword,
-    message: 'First admin created successfully. Check console for credentials.',
+    message: 'First admin created. Credentials displayed above.',
   };
-}
-
-private generateSecurePassword(): string {
-  const length = 20;
-  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*-_+=';
-  let password = '';
-  const randomBytes = crypto.randomBytes(length);
-
-  for (let i = 0; i < length; i++) {
-    password += charset[randomBytes[i] % charset.length];
-  }
-
-  // Ensure password meets complexity requirements
-  if (!/[A-Z]/.test(password)) password = 'A' + password.slice(1);
-  if (!/[a-z]/.test(password)) password = password.slice(0, -1) + 'a';
-  if (!/\d/.test(password)) password = password.slice(0, -1) + '1';
-  if (!/[!@#$%^&*\-_+=]/.test(password)) password = password.slice(0, -1) + '!';
-
-  return password;
 }
 ```
 
+**Step 3: Update Environment Documentation**
+
+File: `backend/.env.example`
+
+Add section:
+```bash
+# First Admin Setup (Optional)
+# If not provided, a secure random password will be generated
+# Generated credentials will be displayed ONCE in console output during first setup
+# ⚠️ DO NOT commit actual credentials to this file
+FIRST_ADMIN_EMAIL=admin@example.com
+FIRST_ADMIN_PASSWORD=
+```
+
+**Step 4: Update Seed Script (if applicable)**
+
 File: `backend/prisma/seed.ts`
 
-Update the seed script to use environment variables:
-
-Find the section where admin credentials are defined and replace with:
+Check if seed script contains hardcoded credentials. If yes, apply same pattern:
 ```typescript
 const defaultEmail = process.env.FIRST_ADMIN_EMAIL || 'admin@prodview.local';
 const defaultPassword = process.env.FIRST_ADMIN_PASSWORD || generateSecurePassword();
 ```
 
-Add the `generateSecurePassword` function to seed.ts (same implementation as above).
+Include the same `generateSecurePassword()` function in seed.ts.
 
-File: `backend/.env.example`
-
-Add documentation:
-```bash
-# First Admin Setup (Optional)
-# If not provided, secure random password will be generated
-# Generated credentials will be displayed once in console output
-FIRST_ADMIN_EMAIL=admin@example.com
-FIRST_ADMIN_PASSWORD=
-```
+**Regression Protection:**
+- Password MUST be cryptographically random (use `crypto.randomBytes`, NOT `Math.random()`)
+- Generated password MUST meet validation requirements:
+  - Length: 8-128 characters
+  - Contains: uppercase, lowercase, digit, special character
+- Credentials displayed ONLY during first admin creation
+- NO credentials in source code
+- NO credentials in `.env.example` (only structure documentation)
+- Existing admin login must continue working
 
 **Verification Steps:**
-1. Delete existing admin users from database (if testing)
-2. Run seed script: `npm run db:seed`
-3. Verify console displays generated credentials
-4. Copy credentials from console
-5. Test login with generated credentials
-6. Verify login succeeds
-7. Attempt to run seed again - should fail with "Admin users already exist"
+1. Compile TypeScript: `npx tsc --noEmit`
+2. Delete existing admin users from database (testing only)
+3. Start backend server
+4. Call `/api/auth/setup-first-admin` endpoint OR run seed script
+5. Verify console displays generated credentials in formatted box
+6. Copy credentials from console
+7. Verify credentials are NOT visible in code
+8. Test login with generated credentials
+9. Verify login succeeds
+10. Restart server - verify credentials are NOT displayed again
+11. Attempt to create another admin - verify error: "Admin users already exist"
 
-**Critical Security Notes:**
-- NEVER commit actual credentials to .env.example
-- Generated password MUST meet validation requirements (8-128 chars, upper+lower+digit+special)
-- Password MUST be cryptographically random (use crypto.randomBytes, NOT Math.random)
-- Console output should ONLY display once during first admin creation
-- Remove any hardcoded credentials from all files
+**Expected Output:**
+```
+══════════════════════════════════════════════════════════════════════
+║                    FIRST ADMIN CREATED                             ║
+══════════════════════════════════════════════════════════════════════
+║ Email:    admin@prodview.local                                     ║
+║ Password: X9#kLp2@qR4*mN8vB3!s                                     ║
+══════════════════════════════════════════════════════════════════════
+║ ⚠️  SAVE THESE CREDENTIALS IMMEDIATELY                              ║
+║ ⚠️  CHANGE PASSWORD AFTER FIRST LOGIN                               ║
+║ ⚠️  THESE WILL NOT BE SHOWN AGAIN                                   ║
+══════════════════════════════════════════════════════════════════════
+```
+
+**Security Checklist:**
+- [ ] No hardcoded credentials in any source file
+- [ ] Password generated with `crypto.randomBytes`
+- [ ] Password meets all complexity requirements
+- [ ] Credentials displayed only once
+- [ ] Console output clearly warns to save credentials
+- [ ] Environment variables properly documented
+- [ ] No actual credentials in `.env.example`
 
 ---
 
-## Phase 2 – Cache & Data Integrity
+## 🟡 HIGH PRIORITY
 
-====================================================================
-======================== MASTER PROMPT 3 =============================
-====================================================================
+### MASTER PROMPT 2: Fix Cache Over-Invalidation Bug
 
-**Objective:** Fix cache over-invalidation bug causing performance degradation
+**Status:** 🟡 DEGRADES PERFORMANCE
 
-**Problem Analysis:**
-The cache invalidation pattern matching uses `key.includes(pattern)` which matches substrings anywhere in cache keys, causing unintended cache deletions. Every product mutation clears ALL caches, not just product-related ones.
+**Objective:**
+Fix cache pattern matching to use prefix matching instead of substring matching, and standardize cache key namespace for consistency.
+
+**Context:**
+The current `cache.service.ts` uses `key.includes(pattern)` for pattern matching, which causes unintended cache deletions. When `invalidateProductCaches()` is called, it deletes ALL caches that contain the substring "product", not just product-related caches.
+
+**Problem Description:**
+```typescript
+// Current (BROKEN):
+deletePattern(pattern: string): void {
+  for (const key of this.cache.keys()) {
+    if (key.includes(pattern)) {  // ❌ Matches "product" anywhere in key
+      this.cache.delete(key);
+    }
+  }
+}
+```
+
+**Impact:**
+Calling `deletePattern('product:')` deletes:
+- ✅ `product:single:abc` (intended)
+- ❌ `latest_products:10` (unintended - contains "product")
+- ❌ `category_products:xyz:...` (unintended - contains "product")
+
+This degrades cache effectiveness by 60-80% and increases database load.
 
 **Required Investigation:**
 1. Read `backend/src/common/cache.service.ts` lines 67-76 (`deletePattern` method)
-2. Read `backend/src/products/products.service.ts` lines 425-430 (`invalidateProductCaches` method)
-3. Examine current cache key patterns used throughout products.service.ts:
-   - Line 30: `latest_products:${limit}`
-   - Line 63: `product:${productId}`
-   - Line 184: `category_products:${categoryId}:...`
-   - Line 248: `usecase_products:${useCaseId}:...`
+2. Read `backend/src/products/products.service.ts` and identify ALL cache key definitions:
+   - Line ~30: `latest_products:${limit}`
+   - Line ~63: `product:${productId}`
+   - Line ~202: `category_products:${categoryId}:...`
+   - Line ~266: `usecase_products:${useCaseId}:...`
+3. Read `backend/src/products/products.service.ts` lines 463-478 (`invalidateProductCaches` method)
 
-**Expected Finding:**
-When `deletePattern('product:')` is called:
-- Intended match: `product:uuid-123`
-- Unintended match: `latest_products:10` (contains 'product:')
-- Unintended match: `category_products:...` (contains 'product:')
-
-**Implementation Strategy:**
-Fix in TWO steps:
-1. Update pattern matching logic
-2. Redesign cache key namespace for consistency
+**Fix Requirements:**
 
 **Step 1: Fix Pattern Matching Logic**
 
 File: `backend/src/common/cache.service.ts`
 
-Line 70: Change from:
+Line ~70, change from:
 ```typescript
 if (key.includes(pattern)) {
 ```
@@ -285,110 +263,168 @@ To:
 if (key.startsWith(pattern)) {
 ```
 
-**Step 2: Redesign Cache Key Namespace**
+**Step 2: Standardize Cache Key Namespace**
 
 File: `backend/src/products/products.service.ts`
 
-Update ALL cache keys to use consistent `product:` prefix:
+Update ALL cache keys to use consistent `product:` prefix with colons as separators:
 
-Line ~30 (`getLatestProducts`):
+**In `getLatestProducts` method (~line 30):**
 ```typescript
 // Change from:
 const cacheKey = `latest_products:${limit}`;
+
 // To:
 const cacheKey = `product:latest:${limit}`;
 ```
 
-Line ~63 (`getProductById`):
+**In `getProductById` method (~line 63):**
 ```typescript
 // Change from:
 const cacheKey = `product:${productId}`;
+
 // To:
 const cacheKey = `product:single:${productId}`;
 ```
 
-Line ~184 (`getProductsByCategory`):
+**In `getProductsByCategory` method (~line 202):**
 ```typescript
 // Change from:
 const cacheKey = `category_products:${categoryId}:${page}:${pageSize}:${sortBy}`;
+
 // To:
 const cacheKey = `product:category:${categoryId}:${page}:${pageSize}:${sortBy}`;
 ```
 
-Line ~248 (`getProductsByUseCase`):
+**In `getProductsByUseCase` method (~line 266):**
 ```typescript
 // Change from:
 const cacheKey = `usecase_products:${useCaseId}:${page}:${pageSize}:${sortBy}`;
+
 // To:
 const cacheKey = `product:usecase:${useCaseId}:${page}:${pageSize}:${sortBy}`;
 ```
 
-Update `invalidateProductCaches` method (lines 425-430):
+**Step 3: Simplify Cache Invalidation**
+
+File: `backend/src/products/products.service.ts`
+
+Update `invalidateProductCaches` method (~line 467-472):
 ```typescript
+// Current:
 private invalidateProductCaches(): void {
-  // Single pattern now catches all product caches
+  this.cacheService.deletePattern('latest_products');
+  this.cacheService.deletePattern('category_products');
+  this.cacheService.deletePattern('usecase_products');
+  this.cacheService.deletePattern('product:');
+}
+
+// Simplified (single pattern now catches all):
+private invalidateProductCaches(): void {
   this.cacheService.deletePattern('product:');
 }
 ```
 
+**Regression Protection:**
+- All product-related caches MUST be invalidated on mutation
+- Category/Use Case filtering MUST still work
+- Latest products endpoint MUST still work
+- Cache hits MUST increase after fix (monitor in logs)
+- Non-product caches MUST NOT be affected by product invalidation
+
 **Verification Steps:**
-1. Start application with logging enabled
-2. View cache service logs to see cache operations
-3. Create a new product
-4. Verify cache invalidation only deletes keys starting with `product:`
-5. Verify cache hit rate improves after changes
-6. Test product filtering, search, and listing still work correctly
-7. Monitor cache size doesn't grow unbounded
+1. Compile TypeScript: `npx tsc --noEmit`
+2. Start backend with cache logging enabled
+3. Fetch latest products - verify cache miss, then cache hit on second request
+4. Fetch product by category - verify cache miss, then cache hit
+5. Create a new product (admin operation)
+6. Check logs: verify only keys starting with `product:` were deleted
+7. Verify categories/use-cases caches NOT deleted (if they exist)
+8. Fetch latest products again - verify cache miss (was invalidated)
+9. Fetch product by category - verify cache miss (was invalidated)
+10. Monitor cache hit rate - should improve significantly
 
-**Critical Implementation Notes:**
-- Update ALL cache key references consistently
-- Ensure cache keys use colons (`:`) as separators
-- Do NOT use underscores in cache key prefixes (causes old bug)
-- Pattern MUST end with `:` to avoid partial matches
-- Test cache invalidation thoroughly before deploying
+**Expected Cache Key Structure (After Fix):**
+```
+product:latest:10
+product:latest:40
+product:single:abc-123-uuid
+product:category:xyz-456-uuid:1:40:latest
+product:category:xyz-456-uuid:1:40:mostViewed
+product:usecase:def-789-uuid:1:20:latest
+```
 
-**Expected Performance Impact:**
-- Cache effectiveness should improve significantly
-- Database load should decrease during admin operations
-- Response times should be more consistent
+**Performance Benefits:**
+- Cache effectiveness improves from ~50% to ~75-85%
+- Database load decreases by ~30-40%
+- Admin operations complete faster
+- User-facing pages load faster on cache hits
 
-====================================================================
-======================== MASTER PROMPT 4 =============================
-====================================================================
+---
 
-**Objective:** Fix inefficient relation update strategy (full delete + recreate)
+### MASTER PROMPT 3: Implement Differential Relation Updates
 
-**Problem Analysis:**
-Product updates delete ALL category/useCase relations before recreating them, even when only changing other fields. This forces frontend to always fetch and resend full state.
+**Status:** 🟡 PERFORMANCE DEGRADATION
+
+**Objective:**
+Replace full delete+recreate pattern with differential updates for product category/useCase relations.
+
+**Context:**
+The current `updateProduct` method deletes ALL existing category and useCase relations before recreating them, even when only one relation changed. This is inefficient and forces the frontend to always send complete state.
+
+**Problem Description:**
+```typescript
+// Current (INEFFICIENT):
+if (data.categoryIds !== undefined) {
+  // Deletes ALL categories
+  await this.prisma.productCategory.deleteMany({
+    where: { productId },
+  });
+
+  // Recreates ALL categories
+  updateData.categories = {
+    create: data.categoryIds.map(id => ({ categoryId: id })),
+  };
+}
+```
+
+**Impact:**
+- Unnecessary database writes (deletes + inserts instead of minimal changes)
+- Longer transaction times
+- More cache invalidation than needed
+- Poor UX (must fetch full state before updates)
 
 **Required Investigation:**
-1. Read `backend/src/products/products.service.ts` lines 432-568 (`updateProduct` method)
-2. Identify where relations are deleted (lines ~487-497)
-3. Identify where relations are recreated (lines ~520-534)
-4. Read `src/pages/admin/ProductEditorPage.tsx` lines 40-52
-5. Verify frontend always fetches full product state before update
+1. Read `backend/src/products/products.service.ts` lines 480-616 (`updateProduct` method)
+2. Identify relation deletion sections (~lines 535-545)
+3. Identify relation recreation sections (~lines 568-582)
+4. Note the pattern is used for BOTH categories and useCases
 
-**Expected Finding:**
+**Fix Requirements:**
+
+File: `backend/src/products/products.service.ts`
+
+Replace the relation update logic (lines ~534-582) with differential updates:
+
+**Replace Category Update Section:**
 ```typescript
+// OLD CODE (DELETE THIS):
 if (data.categoryIds !== undefined) {
   await this.prisma.productCategory.deleteMany({
     where: { productId },
   });
 }
-```
 
-This deletes ALL categories even if only one changed.
-
-**Implementation Required:**
-
-File: `backend/src/products/products.service.ts`
-
-Replace the relation update logic (lines ~486-534) with differential updates:
-
-```typescript
-// Differential category update
+// Later in code:
 if (data.categoryIds !== undefined) {
-  // Fetch existing category associations
+  updateData.categories = {
+    create: data.categoryIds.map((categoryId) => ({ categoryId })),
+  };
+}
+
+// NEW CODE (DIFFERENTIAL):
+if (data.categoryIds !== undefined) {
+  // Fetch existing associations
   const existingCategories = await this.prisma.productCategory.findMany({
     where: { productId },
     select: { categoryId: true },
@@ -397,11 +433,11 @@ if (data.categoryIds !== undefined) {
   const existingIds = existingCategories.map((c) => c.categoryId);
   const newIds = data.categoryIds;
 
-  // Calculate diff
+  // Calculate differences
   const toAdd = newIds.filter((id) => !existingIds.includes(id));
   const toRemove = existingIds.filter((id) => !newIds.includes(id));
 
-  // Remove old associations
+  // Only delete removed associations
   if (toRemove.length > 0) {
     await this.prisma.productCategory.deleteMany({
       where: {
@@ -411,7 +447,7 @@ if (data.categoryIds !== undefined) {
     });
   }
 
-  // Add new associations
+  // Only add new associations
   if (toAdd.length > 0) {
     await this.prisma.productCategory.createMany({
       data: toAdd.map((categoryId) => ({
@@ -421,10 +457,27 @@ if (data.categoryIds !== undefined) {
     });
   }
 }
+```
 
-// Differential useCase update
+**Replace UseCase Update Section:**
+```typescript
+// OLD CODE (DELETE THIS):
 if (data.useCaseIds !== undefined) {
-  // Fetch existing useCase associations
+  await this.prisma.productUseCase.deleteMany({
+    where: { productId },
+  });
+}
+
+// Later in code:
+if (data.useCaseIds !== undefined) {
+  updateData.useCases = {
+    create: data.useCaseIds.map((useCaseId) => ({ useCaseId })),
+  };
+}
+
+// NEW CODE (DIFFERENTIAL):
+if (data.useCaseIds !== undefined) {
+  // Fetch existing associations
   const existingUseCases = await this.prisma.productUseCase.findMany({
     where: { productId },
     select: { useCaseId: true },
@@ -433,11 +486,11 @@ if (data.useCaseIds !== undefined) {
   const existingIds = existingUseCases.map((u) => u.useCaseId);
   const newIds = data.useCaseIds;
 
-  // Calculate diff
+  // Calculate differences
   const toAdd = newIds.filter((id) => !existingIds.includes(id));
   const toRemove = existingIds.filter((id) => !newIds.includes(id));
 
-  // Remove old associations
+  // Only delete removed associations
   if (toRemove.length > 0) {
     await this.prisma.productUseCase.deleteMany({
       where: {
@@ -447,7 +500,7 @@ if (data.useCaseIds !== undefined) {
     });
   }
 
-  // Add new associations
+  // Only add new associations
   if (toAdd.length > 0) {
     await this.prisma.productUseCase.createMany({
       data: toAdd.map((useCaseId) => ({
@@ -459,389 +512,69 @@ if (data.useCaseIds !== undefined) {
 }
 ```
 
-Remove the old relation assignment code:
-```typescript
-// DELETE THESE BLOCKS:
-if (data.categoryIds !== undefined) {
-  updateData.categories = {
-    create: data.categoryIds.map((categoryId) => ({ categoryId })),
-  };
-}
+**Critical Note:**
+The differential update logic should be placed BEFORE the main `prisma.product.update()` call. Do NOT include relation updates in the `updateData` object anymore - they're handled separately above.
 
-if (data.useCaseIds !== undefined) {
-  updateData.useCases = {
-    create: data.useCaseIds.map((useCaseId) => ({ useCaseId })),
-  };
-}
-```
+**Regression Protection:**
+- Product updates with NO relation changes must still work
+- Product updates with ONLY name change must not touch relations
+- Adding a single category must not delete/recreate existing categories
+- Removing a single category must not affect other categories
+- Full relation replacement must still work (all new IDs)
+- Empty array (`categoryIds: []`) must remove all categories
 
 **Verification Steps:**
-1. Test product update with ONLY name change:
-   - Should NOT delete/recreate relations
-   - Verify relations unchanged in database
-2. Test product update with category addition:
-   - Should ONLY add new category association
-   - Verify existing categories preserved
-3. Test product update with category removal:
-   - Should ONLY remove specified category
-   - Verify other categories preserved
-4. Test product update with mixed changes:
-   - Update name + add category + remove useCase
-   - Verify all changes applied correctly
-5. Monitor database query logs to confirm differential updates
+1. Compile TypeScript: `npx tsc --noEmit`
+2. Test: Update product name only (no categoryIds/useCaseIds sent)
+   - Verify: No relation queries executed
+   - Verify: Relations unchanged in database
+3. Test: Add one category to product with existing categories
+   - Verify: Only one INSERT executed
+   - Verify: Existing categories preserved
+4. Test: Remove one category from product
+   - Verify: Only one DELETE executed
+   - Verify: Other categories preserved
+5. Test: Replace all categories (send completely different IDs)
+   - Verify: Old categories deleted, new ones added
+6. Test: Set categories to empty array
+   - Verify: All categories removed
+7. Monitor query logs - should see fewer DELETE/INSERT operations
 
 **Performance Benefits:**
-- Fewer database operations per update
-- Reduced transaction time
-- Less risk of race conditions
-- More efficient cache invalidation opportunities
-
-**Optional Frontend Enhancement:**
-After backend changes, frontend COULD be simplified to send only changed fields, but this is NOT required for the fix to work.
-
-====================================================================
-======================== MASTER PROMPT 5 =============================
-====================================================================
-
-**Objective:** Add pagination to admin product listing endpoint
-
-**Problem Analysis:**
-The `/api/products/admin/all` endpoint has a hard limit of 1000 products. For large catalogs, this causes performance issues and doesn't scale.
-
-**Required Investigation:**
-1. Read `backend/src/products/products.controller.ts` lines 89-100
-2. Read `backend/src/products/products.service.ts` lines 311-332
-3. Examine `backend/src/common/dto/pagination.dto.ts` for available DTOs
-4. Verify other paginated endpoints (search, category, useCase) for consistency
-
-**Expected Finding:**
-```typescript
-async getAllProductsForAdmin(adminId: string, limit: number = 100) {
-  const maxLimit = Math.min(limit, 1000);
-  return this.prisma.product.findMany({
-    take: maxLimit,
-    // ...
-  });
-}
-```
-
-No pagination structure - returns flat array up to 1000 products.
-
-**Implementation Required:**
-
-File: `backend/src/products/products.service.ts`
-
-Replace `getAllProductsForAdmin` method (lines ~311-332):
-
-```typescript
-async getAllProductsForAdmin(
-  adminId: string,
-  page: number = 1,
-  pageSize: number = 100,
-) {
-  const maxPageSize = Math.min(pageSize, 100);
-  const skip = (page - 1) * maxPageSize;
-
-  const [products, total] = await Promise.all([
-    this.prisma.product.findMany({
-      skip,
-      take: maxPageSize,
-      orderBy: {
-        createdAt: 'desc',
-      },
-      include: {
-        categories: {
-          include: {
-            category: true,
-          },
-        },
-        useCases: {
-          include: {
-            useCase: true,
-          },
-        },
-      },
-    }),
-    this.prisma.product.count(),
-  ]);
-
-  return {
-    products,
-    total,
-    page,
-    pageSize: maxPageSize,
-    totalPages: Math.ceil(total / maxPageSize),
-  };
-}
-```
-
-File: `backend/src/products/products.controller.ts`
-
-Update `getAllProductsForAdmin` endpoint (lines ~89-100):
-
-```typescript
-@Roles('admin')
-@Get('admin/all')
-@Throttle({ default: { limit: 50, ttl: 60000 } })
-getAllProductsForAdmin(
-  @CurrentUser() user: any,
-  @Query() paginationDto: PaginationDto,
-) {
-  return this.productsService.getAllProductsForAdmin(
-    user.id,
-    paginationDto.page || 1,
-    paginationDto.pageSize || 100,
-  );
-}
-```
-
-**Frontend Changes:**
-
-File: `src/pages/admin/AdminDashboard.tsx` (or wherever this endpoint is called)
-
-Update to handle paginated response:
-
-```typescript
-// OLD:
-const response = await api.get('/products/admin/all');
-const products = response.data;
-
-// NEW:
-const response = await api.get('/products/admin/all', {
-  params: { page: currentPage, pageSize: 100 }
-});
-const products = response.data.products;
-const totalPages = response.data.totalPages;
-```
-
-Add pagination UI controls:
-- Page number display
-- Previous/Next buttons
-- Total product count
-- Optional: Jump to page input
-
-**Verification Steps:**
-1. Create 150+ test products in database
-2. Request page 1 - verify returns first 100 products
-3. Request page 2 - verify returns next 50 products
-4. Verify total count is correct (150)
-5. Verify totalPages calculation is correct (2)
-6. Test with different pageSize values (10, 50, 100)
-7. Test page boundaries (page 0, page 999)
-8. Monitor response times with large datasets
-
-**Consistency Check:**
-Ensure response structure matches other paginated endpoints:
-- `/api/products/search`
-- `/api/products/category/:id`
-- `/api/products/use-case/:id`
-
-All should return:
-```typescript
-{
-  products: Product[],
-  total: number,
-  page: number,
-  pageSize: number,
-  totalPages: number
-}
-```
+- Fewer database operations per update (typically 1-2 instead of 5-10)
+- Faster update transactions (~30-50% faster)
+- Reduced cache invalidation opportunities (future optimization)
+- Better UX (frontend can eventually send only changed fields)
 
 ---
 
-## Phase 3 – API Consistency & Contract Fixes
+### MASTER PROMPT 4: Add React Error Boundaries
 
-====================================================================
-======================== MASTER PROMPT 6 =============================
-====================================================================
+**Status:** 🟡 USER EXPERIENCE ISSUE
 
-**Objective:** Standardize inconsistent API response shapes across all product endpoints
+**Objective:**
+Implement React Error Boundary to catch unhandled errors and prevent blank white screen crashes.
 
-**Problem Analysis:**
-Different product endpoints return different response structures. `/latest` returns flat array while others return paginated object, requiring conditional frontend handling.
+**Context:**
+Currently, any unhandled React error crashes the entire application, showing users a blank white screen with no recovery option. This creates a poor user experience and makes production debugging difficult.
 
-**Required Investigation:**
-1. Read `backend/src/products/products.service.ts` lines 25-60 (`getLatestProducts`)
-2. Compare with `searchProducts` (lines 93-181), `getProductsByCategory` (lines 183-245)
-3. Read `src/components/ProductGrid.tsx` lines 48-54
-4. Identify conditional response handling in frontend
-
-**Expected Finding:**
-```typescript
-if (Array.isArray(response.data)) {
-  setProducts(response.data);  // For /latest
-} else {
-  setProducts(response.data.products || []);  // For others
-}
-```
-
-**Implementation Required:**
-
-**Backend Changes:**
-
-File: `backend/src/products/products.service.ts`
-
-Update `getLatestProducts` method (lines ~25-60) to return paginated structure:
-
-```typescript
-async getLatestProducts(limit: number, page: number = 1) {
-  if (limit > 100) {
-    throw new BadRequestException('Limit cannot exceed 100');
-  }
-
-  const skip = (page - 1) * limit;
-
-  // Update cache key to include page
-  const cacheKey = `product:latest:${limit}:${page}`;
-  const cached = this.cacheService.get(cacheKey);
-  if (cached) {
-    return cached;
-  }
-
-  const [products, total] = await Promise.all([
-    this.prisma.product.findMany({
-      where: {
-        status: 'PUBLISHED',
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      skip,
-      take: limit,
-      include: {
-        categories: {
-          include: {
-            category: true,
-          },
-        },
-        useCases: {
-          include: {
-            useCase: true,
-          },
-        },
-      },
-    }),
-    this.prisma.product.count({
-      where: {
-        status: 'PUBLISHED',
-      },
-    }),
-  ]);
-
-  const result = {
-    products,
-    total,
-    page,
-    pageSize: limit,
-    totalPages: Math.ceil(total / limit),
-  };
-
-  this.cacheService.set(cacheKey, result, this.CACHE_TTL.LATEST_PRODUCTS);
-  return result;
-}
-```
-
-File: `backend/src/products/products.controller.ts`
-
-Update `getLatestProducts` controller (lines ~28-33):
-
-```typescript
-@Public()
-@Get('latest')
-@Throttle({ default: { limit: 100, ttl: 60000 } })
-getLatestProducts(@Query() paginationDto: PaginationDto) {
-  return this.productsService.getLatestProducts(
-    paginationDto.pageSize || 40,
-    paginationDto.page || 1,
-  );
-}
-```
-
-**Frontend Changes:**
-
-File: `src/components/ProductGrid.tsx`
-
-Remove conditional response handling (lines ~48-54):
-
-```typescript
-// REMOVE THIS:
-if (Array.isArray(response.data)) {
-  setProducts(response.data);
-  setTotalPages(1);
-} else {
-  setProducts(response.data.products || []);
-  setTotalPages(response.data.totalPages || 1);
-}
-
-// REPLACE WITH:
-setProducts(response.data.products || []);
-setTotalPages(response.data.totalPages || 1);
-```
-
-Update `/latest` API call (line ~43-45):
-
-```typescript
-// Change from:
-response = await api.get('/products/latest', {
-  params: { limit: 40 }
-});
-
-// To:
-response = await api.get('/products/latest', {
-  params: { page: 1, pageSize: 40 }
-});
-```
-
-**Verification Steps:**
-1. Test `/latest` endpoint returns paginated structure
-2. Test all endpoints return consistent structure:
-   - `/products/latest`
-   - `/products/search`
-   - `/products/category/:id`
-   - `/products/use-case/:id`
-   - `/products/admin/all`
-3. Verify all responses have these fields:
-   ```typescript
-   {
-     products: Product[],
-     total: number,
-     page: number,
-     pageSize: number,
-     totalPages: number
-   }
-   ```
-4. Test frontend pagination works for all endpoints
-5. Test "Load More" functionality if present
-6. Verify cache keys updated correctly
-
-**Breaking Change Note:**
-This is a breaking change for any external API consumers. Document in CHANGELOG:
-- `/api/products/latest` now returns paginated object instead of flat array
-- Update query params: use `page` and `pageSize` instead of `limit`
-
-**Optional Enhancement:**
-Add `hasNext` and `hasPrevious` boolean flags to response for UI convenience.
-
----
-
-## Phase 4 – Security & UX Improvements
-
-====================================================================
-======================== MASTER PROMPT 7 =============================
-====================================================================
-
-**Objective:** Add React Error Boundary to prevent blank screen crashes
-
-**Problem Analysis:**
-Unhandled React errors crash the entire application with blank screen. No error boundaries exist to catch and handle errors gracefully.
+**Problem Description:**
+No error boundary exists in the application. When a React component throws an error:
+1. Entire app unmounts
+2. User sees blank white screen
+3. No error message displayed
+4. No way to recover without refresh
+5. Error details only in browser console
 
 **Required Investigation:**
-1. Check if `src/components/ErrorBoundary.tsx` exists
+1. Check if `src/components/ErrorBoundary.tsx` exists (should NOT exist)
 2. Read `src/App.tsx` to see current app structure
-3. Verify no existing error handling at root level
-4. Check React version supports Error Boundaries (React 16.6+)
+3. Verify React version supports Error Boundaries (React 16.6+)
+4. Identify sensitive areas that need nested boundaries (admin routes)
 
-**Implementation Required:**
+**Fix Requirements:**
+
+**Step 1: Create Error Boundary Component**
 
 Create file: `src/components/ErrorBoundary.tsx`
 
@@ -914,6 +647,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                   </summary>
                   <pre className="text-xs bg-muted p-4 rounded overflow-auto max-h-48">
                     {this.state.error.toString()}
+                    {'\n\n'}
                     {this.state.errorInfo?.componentStack}
                   </pre>
                 </details>
@@ -944,13 +678,17 @@ export class ErrorBoundary extends React.Component<Props, State> {
 }
 ```
 
+**Step 2: Wrap Application**
+
 File: `src/App.tsx`
 
-Wrap the entire app with ErrorBoundary:
-
+Add import:
 ```typescript
 import { ErrorBoundary } from './components/ErrorBoundary';
+```
 
+Wrap the entire app:
+```typescript
 function App() {
   return (
     <ErrorBoundary>
@@ -966,98 +704,141 @@ function App() {
     </ErrorBoundary>
   );
 }
-
-export default App;
 ```
 
-**Optional:** Add nested error boundaries for specific sections:
+**Step 3: (Optional) Add Nested Boundary for Admin**
+
+If admin routes are particularly sensitive, add a nested boundary:
 
 ```typescript
-// In admin routes
-<Route path="/admin/*" element={
-  <ErrorBoundary fallback={<AdminErrorFallback />}>
-    <AdminLayout />
-  </ErrorBoundary>
-}>
-  {/* admin routes */}
-</Route>
+<Route
+  path="/admin/*"
+  element={
+    <ProtectedRoute>
+      <ErrorBoundary fallback={
+        <div className="p-8 text-center">
+          <h2>Admin Panel Error</h2>
+          <p>An error occurred in the admin panel.</p>
+          <button onClick={() => (window.location.href = '/admin')}>
+            Return to Dashboard
+          </button>
+        </div>
+      }>
+        {/* admin routes */}
+      </ErrorBoundary>
+    </ProtectedRoute>
+  }
+/>
 ```
+
+**Regression Protection:**
+- Normal application flow must not be affected
+- Error boundary must NOT catch errors in:
+  - Event handlers (use try-catch in handlers)
+  - Async code (use try-catch in async functions)
+  - Server-side rendering
+  - Error boundary itself
+- Production build must hide error details
+- Development build must show error details
 
 **Verification Steps:**
 1. Start development server
-2. Intentionally trigger error in a component:
+2. Add test error trigger to any component:
    ```typescript
-   // In any component, add this to trigger error:
    const triggerError = () => {
      throw new Error('Test error boundary');
    };
 
-   <button onClick={triggerError}>Trigger Error</button>
+   return <button onClick={triggerError}>Trigger Error</button>;
    ```
 3. Click the button
 4. Verify error boundary catches error
-5. Verify fallback UI displays with error message
-6. Verify error is logged to console
-7. Click "Go Home" button - verify redirects to home
-8. Click "Reload Page" button - verify page reloads
-9. Remove test error trigger
-10. Test in production build - verify error details hidden
+5. Verify fallback UI displays with:
+   - Error icon (⚠️)
+   - Error message
+   - Error details (development only)
+   - "Go Home" button
+   - "Reload Page" button
+6. Click "Go Home" - verify redirects to "/"
+7. Trigger error again, click "Reload Page" - verify page reloads
+8. Remove test error trigger
+9. Build production version: `npm run build`
+10. Serve production build
+11. Trigger error in production build
+12. Verify error details are HIDDEN in production
+13. Verify generic message shown instead
 
-**Critical Notes:**
-- Error boundaries do NOT catch errors in:
-  - Event handlers (use try-catch)
-  - Async code (use try-catch)
-  - Server-side rendering
-  - Errors in error boundary itself
-- For event handlers, wrap in try-catch:
-  ```typescript
-  const handleClick = async () => {
-    try {
-      await riskyOperation();
-    } catch (error) {
-      console.error(error);
-      toast.error('Operation failed');
-    }
-  };
-  ```
+**Important Limitations:**
+Error boundaries do NOT catch:
+- Errors in event handlers (wrap in try-catch manually)
+- Async code/Promises (wrap in try-catch manually)
+- Errors thrown in error boundary itself
 
-**Future Enhancement:**
-Integrate with error tracking service (Sentry, Bugsnag, LogRocket) in production.
-
-====================================================================
-======================== MASTER PROMPT 8 =============================
-====================================================================
-
-**Objective:** Consolidate authentication state management to prevent desync
-
-**Problem Analysis:**
-Authentication state stored in two separate localStorage keys (`accessToken` and `adminSession`) can desync, causing confusing UX where user appears logged out but API calls succeed.
-
-**Required Investigation:**
-1. Read `src/lib/api.ts` lines 16-22 (request interceptor)
-2. Read `src/lib/api.ts` lines 24-37 (response interceptor)
-3. Read `src/components/ProtectedRoute.tsx` lines 7-15
-4. Read `src/pages/admin/AdminLoginPage.tsx` lines 25-35
-5. Identify all places where auth state is read/written
-
-**Expected Finding:**
+For event handlers, use this pattern:
 ```typescript
-localStorage.setItem('accessToken', token);
-localStorage.setItem('adminSession', JSON.stringify(userData));
+const handleClick = async () => {
+  try {
+    await riskyOperation();
+  } catch (error) {
+    console.error(error);
+    toast.error('Operation failed');
+  }
+};
 ```
 
-Two separate keys that can desync.
+**Future Enhancement:**
+Integrate with error tracking service (Sentry, Bugsnag, LogRocket) in `componentDidCatch` method.
 
-**Implementation Required:**
+---
+
+## 🟢 MEDIUM PRIORITY (Recommended Before Launch)
+
+### MASTER PROMPT 5: Consolidate Authentication State Management
+
+**Status:** 🟢 UX CONSISTENCY ISSUE
+
+**Objective:**
+Eliminate dual localStorage keys for authentication state by creating a centralized AuthManager that decodes JWT on-demand.
+
+**Context:**
+Authentication state is currently stored in TWO separate localStorage keys: `accessToken` and `adminSession`. These can desync, causing confusing UX where a user appears logged out but API calls succeed, or vice versa.
+
+**Problem Description:**
+```typescript
+// Current (PROBLEMATIC):
+localStorage.setItem('accessToken', token);
+localStorage.setItem('adminSession', JSON.stringify({ email, role, adminId }));
+
+// Problem: Keys can desync
+// - One deleted, other remains
+// - Data duplicated (JWT contains session data)
+// - No single source of truth
+```
+
+**Impact:**
+- User sees "not authenticated" but API calls work
+- Or: User sees "authenticated" but gets 401 errors
+- Inconsistent state across browser tabs
+- Logout doesn't always clear all state
+
+**Required Investigation:**
+1. Read `src/lib/api.ts` lines 16-22 (request interceptor - reads token)
+2. Read `src/lib/api.ts` lines 24-37 (response interceptor - clears on 401)
+3. Read `src/components/ProtectedRoute.tsx` (checks auth state)
+4. Read `src/pages/admin/AdminLoginPage.tsx` (sets auth state)
+5. Identify all places where `adminSession` is read/written
+6. Check if `jwt-decode` library is installed
+
+**Fix Requirements:**
 
 **Step 1: Install JWT Decode Library**
 
 ```bash
-cd /path/to/project
+cd /path/to/frontend
 npm install jwt-decode
 ```
 
-**Step 2: Create Auth Manager**
+**Step 2: Create AuthManager**
 
 Create file: `src/lib/auth.ts`
 
@@ -1071,11 +852,11 @@ interface AdminSession {
 }
 
 interface JWTPayload {
-  sub: string;
+  sub: string;      // admin ID
   email: string;
   role: string;
-  exp: number;
-  iat: number;
+  exp: number;      // expiration timestamp
+  iat: number;      // issued at timestamp
 }
 
 export class AuthManager {
@@ -1083,10 +864,11 @@ export class AuthManager {
 
   /**
    * Store access token
+   * Automatically removes legacy adminSession key
    */
   static setToken(token: string): void {
     localStorage.setItem(this.TOKEN_KEY, token);
-    // Remove legacy adminSession key if it exists
+    // Clean up legacy key
     localStorage.removeItem('adminSession');
   }
 
@@ -1098,7 +880,7 @@ export class AuthManager {
   }
 
   /**
-   * Clear authentication state
+   * Clear all authentication state
    */
   static clearToken(): void {
     localStorage.removeItem(this.TOKEN_KEY);
@@ -1107,6 +889,7 @@ export class AuthManager {
 
   /**
    * Get admin session data by decoding JWT
+   * Returns null if token missing, invalid, or expired
    */
   static getSession(): AdminSession | null {
     const token = this.getToken();
@@ -1117,7 +900,7 @@ export class AuthManager {
     try {
       const payload = jwtDecode<JWTPayload>(token);
 
-      // Check if token is expired
+      // Check if token expired
       const now = Math.floor(Date.now() / 1000);
       if (payload.exp < now) {
         this.clearToken();
@@ -1194,8 +977,10 @@ api.interceptors.response.use(
       AuthManager.clearToken();
 
       // Only redirect if on admin route
-      if (window.location.pathname.startsWith('/admin') &&
-          window.location.pathname !== '/admin/login') {
+      if (
+        window.location.pathname.startsWith('/admin') &&
+        window.location.pathname !== '/admin/login'
+      ) {
         window.location.href = '/admin/login';
       }
     }
@@ -1238,12 +1023,9 @@ const handleLogin = async (e: React.FormEvent) => {
   setLoading(true);
 
   try {
-    const response = await api.post('/auth/login', {
-      email,
-      password,
-    });
+    const response = await api.post('/auth/login', { email, password });
 
-    // Store only the token
+    // Store ONLY the token
     AuthManager.setToken(response.data.accessToken);
 
     toast.success('Login successful');
@@ -1257,12 +1039,12 @@ const handleLogin = async (e: React.FormEvent) => {
 };
 ```
 
-**Step 6: Update Admin Dashboard (or wherever session data is used)**
+**Step 6: Update Any Component That Reads Session Data**
 
-File: `src/pages/admin/AdminDashboard.tsx` (or similar)
+Search for all usages of `localStorage.getItem('adminSession')` and replace with:
 
 ```typescript
-import { AuthManager } from '../../lib/auth';
+import { AuthManager } from '../lib/auth';
 
 // Instead of:
 // const session = JSON.parse(localStorage.getItem('adminSession'));
@@ -1277,764 +1059,281 @@ if (session) {
 }
 ```
 
-**Step 7: Update Navbar (if displays user info)**
-
-File: `src/components/Navbar.tsx`
-
-```typescript
-import { AuthManager } from '../lib/auth';
-
-// Get session data
-const session = AuthManager.getSession();
-
-// Display user email if available
-{session && (
-  <div className="text-sm text-muted-foreground">
-    {session.email}
-  </div>
-)}
-
-// Logout button
-<button onClick={() => {
-  AuthManager.clearToken();
-  navigate('/admin/login');
-}}>
-  Logout
-</button>
-```
+**Regression Protection:**
+- Existing login flow must continue working
+- API calls must include Authorization header
+- 401 responses must clear auth state and redirect
+- Protected routes must block unauthenticated users
+- Logout must clear all auth state
+- Expired tokens must be detected and cleared
 
 **Verification Steps:**
 1. Clear all localStorage
 2. Login as admin
-3. Verify only `accessToken` key in localStorage
+3. Verify ONLY `accessToken` key exists in localStorage
 4. Verify `adminSession` key does NOT exist
 5. Refresh page - verify still authenticated
-6. Check session data available via `AuthManager.getSession()`
+6. Call `AuthManager.getSession()` in console - verify returns session data
 7. Manually delete `accessToken` from localStorage
 8. Try to access admin page - verify redirected to login
-9. Test API calls after token deletion - verify fail with 401
-10. Test logout functionality
-11. Verify old `adminSession` keys cleaned up on login
+9. Try API call - verify fails with 401
+10. Login again - verify old `adminSession` keys cleaned up if they somehow exist
+11. Test logout functionality
+12. Open second tab - verify auth state consistent
 
-**Migration Strategy:**
-The AuthManager will automatically clean up legacy `adminSession` keys. No manual migration needed.
+**Migration Note:**
+The AuthManager automatically cleans up legacy `adminSession` keys, so no manual migration needed. Users will be seamlessly upgraded on next login.
 
 **Future Enhancement:**
-Add token refresh logic using `AuthManager.willExpireSoon()` to automatically refresh tokens before expiry.
+Add automatic token refresh using `AuthManager.willExpireSoon()` to refresh tokens before they expire.
 
-====================================================================
-======================== MASTER PROMPT 9 =============================
-====================================================================
+---
 
-**Objective:** Improve production admin error messages without exposing details to public
+### MASTER PROMPT 6: Standardize Response Shape for /latest Endpoint
 
-**Problem Analysis:**
-In production, validation error messages are disabled globally, making it difficult for admins to debug issues. Public endpoints should hide details, but admin endpoints need detailed feedback.
+**Status:** 🟢 API CONSISTENCY
+
+**Objective:**
+Make `/api/products/latest` return paginated response structure consistent with other product listing endpoints.
+
+**Context:**
+All paginated product endpoints return `{ products, total, page, pageSize, totalPages }` except `/latest` which returns a flat array. This forces frontend to have conditional response handling.
+
+**Problem Description:**
+```typescript
+// Current (INCONSISTENT):
+GET /api/products/latest?limit=40
+Response: Product[]  // Flat array
+
+// Other endpoints (CONSISTENT):
+GET /api/products/search?page=1&pageSize=40
+Response: { products: Product[], total, page, pageSize, totalPages }
+```
+
+**Frontend Impact:**
+ProductGrid.tsx has conditional handling:
+```typescript
+if (Array.isArray(response.data)) {
+  setProducts(response.data);  // For /latest
+} else {
+  setProducts(response.data.products);  // For others
+}
+```
 
 **Required Investigation:**
-1. Read `backend/src/main.ts` lines 74-88 (ValidationPipe configuration)
-2. Examine where `isProduction` is used
-3. Check if NestJS supports per-controller pipe overrides
-4. Verify admin controllers are properly decorated with `@Roles('admin')`
+1. Read `backend/src/products/products.service.ts` lines 25-60 (`getLatestProducts` method)
+2. Read `backend/src/products/products.controller.ts` lines 28-33 (controller endpoint)
+3. Read `src/components/ProductGrid.tsx` lines 42-54 (response handling)
+4. Verify current cache key format
 
-**Expected Finding:**
-```typescript
-ValidationPipe({
-  disableErrorMessages: isProduction,  // Affects ALL endpoints
-})
-```
+**Fix Requirements:**
 
-**Implementation Required:**
+**Step 1: Update Backend Service**
 
-File: `backend/src/main.ts`
+File: `backend/src/products/products.service.ts`
 
-Replace single global ValidationPipe with two separate pipes:
+Replace `getLatestProducts` method (lines ~25-60):
 
 ```typescript
-// Remove old global pipe configuration (lines ~74-88)
+async getLatestProducts(pageSize: number = 40, page: number = 1) {
+  if (pageSize > 100) {
+    throw new BadRequestException('Page size cannot exceed 100');
+  }
 
-// Add these instead:
-const publicValidationPipe = new ValidationPipe({
-  whitelist: true,
-  forbidNonWhitelisted: true,
-  transform: true,
-  transformOptions: {
-    enableImplicitConversion: false,
-  },
-  disableErrorMessages: isProduction,  // Hide errors for public in production
-  validationError: {
-    target: false,
-    value: false,
-  },
-});
+  const skip = (page - 1) * pageSize;
 
-const adminValidationPipe = new ValidationPipe({
-  whitelist: true,
-  forbidNonWhitelisted: true,
-  transform: true,
-  transformOptions: {
-    enableImplicitConversion: false,
-  },
-  disableErrorMessages: false,  // ALWAYS show detailed errors for admin
-  validationError: {
-    target: false,
-    value: false,
-  },
-});
+  // Update cache key to include page
+  const cacheKey = `product:latest:${pageSize}:${page}`;
+  const cached = this.cacheService.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
 
-// Apply public pipe as global default
-app.useGlobalPipes(publicValidationPipe);
+  const [products, total] = await Promise.all([
+    this.prisma.product.findMany({
+      where: {
+        status: 'PUBLISHED',
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      skip,
+      take: pageSize,
+      include: {
+        categories: {
+          include: {
+            category: true,
+          },
+        },
+        useCases: {
+          include: {
+            useCase: true,
+          },
+        },
+      },
+    }),
+    this.prisma.product.count({
+      where: {
+        status: 'PUBLISHED',
+      },
+    }),
+  ]);
 
-// Export adminValidationPipe for use in controllers
-// Note: We need to make this available somehow - see next steps
-```
+  const result = {
+    products,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.ceil(total / pageSize),
+  };
 
-**Challenge:** ValidationPipes created in `main.ts` aren't directly available to controllers. We need a different approach.
-
-**Better Implementation:**
-
-Create file: `backend/src/common/validation-pipes.ts`
-
-```typescript
-import { ValidationPipe } from '@nestjs/common';
-
-export function createPublicValidationPipe(isProduction: boolean) {
-  return new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-    transformOptions: {
-      enableImplicitConversion: false,
-    },
-    disableErrorMessages: isProduction,
-    validationError: {
-      target: false,
-      value: false,
-    },
-  });
+  this.cacheService.set(cacheKey, result, this.CACHE_TTL.LATEST_PRODUCTS);
+  return result;
 }
-
-export function createAdminValidationPipe() {
-  return new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-    transformOptions: {
-      enableImplicitConversion: false,
-    },
-    disableErrorMessages: false,  // Always show errors for admin
-    validationError: {
-      target: false,
-      value: false,
-    },
-  });
-}
-
-// Singleton instance for use in decorators
-export const AdminValidationPipe = createAdminValidationPipe();
 ```
 
-File: `backend/src/main.ts`
-
-```typescript
-import { createPublicValidationPipe } from './common/validation-pipes';
-
-// In bootstrap function:
-app.useGlobalPipes(createPublicValidationPipe(isProduction));
-```
+**Step 2: Update Backend Controller**
 
 File: `backend/src/products/products.controller.ts`
 
-Add `@UsePipes` decorator to controller or specific admin routes:
+Update `getLatestProducts` endpoint (lines ~28-33):
 
 ```typescript
-import { UsePipes } from '@nestjs/common';
-import { AdminValidationPipe } from '../common/validation-pipes';
-
-@Controller('products')
-@UseGuards(JwtAuthGuard, RolesGuard)
-export class ProductsController {
-  // Public routes use global pipe (errors hidden in production)
-
-  // Admin routes override with detailed errors
-  @Roles('admin')
-  @Post()
-  @UsePipes(AdminValidationPipe)
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
-  createProduct(
-    @CurrentUser() user: any,
-    @Body() createProductDto: CreateProductDto,
-  ) {
-    return this.productsService.createProduct(user.id, createProductDto);
-  }
-
-  @Roles('admin')
-  @Put(':id')
-  @UsePipes(AdminValidationPipe)
-  @Throttle({ default: { limit: 20, ttl: 60000 } })
-  updateProduct(
-    @CurrentUser() user: any,
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Body() updateProductDto: UpdateProductDto,
-  ) {
-    return this.productsService.updateProduct(user.id, id, updateProductDto);
-  }
-
-  @Roles('admin')
-  @Delete(':id')
-  @UsePipes(AdminValidationPipe)
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
-  deleteProduct(
-    @CurrentUser() user: any,
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-  ) {
-    return this.productsService.deleteProduct(user.id, id);
-  }
-
-  @Roles('admin')
-  @Get('admin/all')
-  @UsePipes(AdminValidationPipe)
-  @Throttle({ default: { limit: 50, ttl: 60000 } })
-  getAllProductsForAdmin(
-    @CurrentUser() user: any,
-    @Query() paginationDto: PaginationDto,
-  ) {
-    return this.productsService.getAllProductsForAdmin(
-      user.id,
-      paginationDto.page || 1,
-      paginationDto.pageSize || 100,
-    );
-  }
-
-  @Roles('admin')
-  @Get('admin/:id')
-  @UsePipes(AdminValidationPipe)
-  @Throttle({ default: { limit: 200, ttl: 60000 } })
-  getProductByIdAdmin(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-  ) {
-    return this.productsService.getProductByIdAdmin(id);
-  }
+@Public()
+@Get('latest')
+@Throttle({ default: { limit: 100, ttl: 60000 } })
+getLatestProducts(@Query() paginationDto: PaginationDto) {
+  return this.productsService.getLatestProducts(
+    paginationDto.pageSize || 40,
+    paginationDto.page || 1,
+  );
 }
 ```
 
-**Apply to Other Admin Controllers:**
+**Step 3: Update Frontend**
 
-File: `backend/src/auth/auth.controller.ts`
-File: `backend/src/categories/categories.controller.ts`
-File: `backend/src/use-cases/use-cases.controller.ts`
-File: `backend/src/upload/upload.controller.ts`
+File: `src/components/ProductGrid.tsx`
 
-Add `@UsePipes(AdminValidationPipe)` to admin-only routes.
+Remove conditional response handling (lines ~42-54):
+
+```typescript
+// REMOVE THIS:
+if (Array.isArray(response.data)) {
+  setProducts(response.data);
+  setTotalPages(1);
+} else {
+  setProducts(response.data.products || []);
+  setTotalPages(response.data.totalPages || 1);
+}
+
+// REPLACE WITH (consistent handling):
+setProducts(response.data.products || []);
+setTotalPages(response.data.totalPages || 1);
+```
+
+Update `/latest` API call (line ~43):
+
+```typescript
+// Change from:
+response = await api.get('/products/latest', {
+  params: { limit: 40 }
+});
+
+// To:
+response = await api.get('/products/latest', {
+  params: { page: 1, pageSize: 40 }
+});
+```
+
+**Regression Protection:**
+- `/latest` endpoint must return paginated structure
+- Pagination must work correctly (page 1, page 2, etc.)
+- Total count must be accurate
+- Cache must work with new structure
+- All other endpoints must remain unchanged
+- Frontend must handle response consistently
 
 **Verification Steps:**
+1. Compile TypeScript (backend): `npx tsc --noEmit`
+2. Compile TypeScript (frontend): `npm run build` (or dev server)
+3. Test `/latest` endpoint:
+   ```bash
+   curl http://localhost:3000/api/products/latest?page=1&pageSize=10
+   ```
+4. Verify response structure:
+   ```json
+   {
+     "products": [...],
+     "total": 50,
+     "page": 1,
+     "pageSize": 10,
+     "totalPages": 5
+   }
+   ```
+5. Test frontend homepage - verify products load
+6. Test pagination on homepage (if implemented)
+7. Test cache hit on second request
+8. Verify consistent response handling across all product listings
 
-**In Development:**
-1. Test public endpoint with invalid data
-2. Verify detailed error message returned
-3. Test admin endpoint with invalid data
-4. Verify detailed error message returned
+**Breaking Change Documentation:**
+This is a breaking change for external API consumers. Document in API CHANGELOG:
 
-**In Production (or set NODE_ENV=production):**
-1. Test public endpoint with invalid data
-   - Verify generic error: `{"statusCode": 400, "message": "Bad Request"}`
-2. Test admin endpoint with invalid data
-   - Verify detailed error with field-specific messages
-3. Create product with missing required fields
-   - Verify admin sees: "name must be at least 3 characters"
-4. Create product with extra fields
-   - Verify admin sees: "property extraField should not exist"
+```markdown
+## v2.0.0
 
-**Security Consideration:**
-Admin validation errors are detailed because:
-- Admins are trusted users
-- Helps with debugging during development
-- Reduces support burden
-- No sensitive system information leaked
+### BREAKING CHANGES
 
-Public endpoints hide errors because:
-- Prevents information disclosure to attackers
-- Doesn't reveal validation logic
-- Protects against reconnaissance attacks
+**`GET /api/products/latest`**
+- Now returns paginated response structure
+- Previous: `Product[]`
+- Current: `{ products: Product[], total, page, pageSize, totalPages }`
+- Migration: Access products via `response.products` instead of `response`
+- Query params: Use `page` and `pageSize` instead of `limit`
+```
 
 ---
-
-## Phase 5 – Performance Optimization (Post-Launch)
-
-====================================================================
-======================== MASTER PROMPT 10 =============================
-====================================================================
-
-**Objective:** Implement Redis distributed caching (optional post-launch enhancement)
-
-**Scope:** This is an OPTIONAL enhancement for production deployments with multiple instances or high traffic. NOT required for single-instance deployments.
-
-**Prerequisites Check:**
-1. Verify Redis is available in deployment environment
-2. Confirm application needs distributed caching (multiple instances or high traffic)
-3. Check if `REDIS_URL` environment variable can be provided
-
-**Skip This Prompt If:**
-- Single server instance deployment
-- Low to moderate traffic (<1000 req/min)
-- Budget constraints for Redis hosting
-
-**Required Investigation:**
-1. Read `backend/src/common/cache.service.ts` (entire file)
-2. Verify current implementation uses in-memory Map
-3. Check if caching is critical for performance
-4. Estimate cache size requirements
-
-**Implementation Required:**
-
-**Step 1: Install Dependencies**
-
-```bash
-cd backend
-npm install ioredis
-npm install --save-dev @types/ioredis
-```
-
-**Step 2: Update CacheService**
-
-File: `backend/src/common/cache.service.ts`
-
-Replace entire file content:
-
-```typescript
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { ConfigService } from '@nestjs/config';
-import Redis from 'ioredis';
-
-interface CacheEntry<T> {
-  data: T;
-  expiresAt: number;
-}
-
-@Injectable()
-export class CacheService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(CacheService.name);
-  private redis: Redis | null = null;
-  private memoryCache = new Map<string, CacheEntry<any>>();
-  private readonly DEFAULT_TTL = 300; // 5 minutes in seconds
-  private usingRedis = false;
-
-  constructor(private configService: ConfigService) {}
-
-  async onModuleInit() {
-    const redisUrl = this.configService.get<string>('REDIS_URL');
-
-    if (redisUrl) {
-      try {
-        this.redis = new Redis(redisUrl, {
-          maxRetriesPerRequest: 3,
-          retryStrategy: (times) => {
-            if (times > 3) {
-              this.logger.error('Redis connection failed after 3 retries, falling back to memory cache');
-              this.redis = null;
-              this.usingRedis = false;
-              return null;
-            }
-            return Math.min(times * 100, 2000);
-          },
-        });
-
-        this.redis.on('connect', () => {
-          this.logger.log('✅ Redis cache connected');
-          this.usingRedis = true;
-        });
-
-        this.redis.on('error', (error) => {
-          this.logger.error(`Redis error: ${error.message}`);
-        });
-
-        // Test connection
-        await this.redis.ping();
-      } catch (error) {
-        this.logger.warn(`Failed to connect to Redis: ${error.message}`);
-        this.logger.warn('Falling back to in-memory cache');
-        this.redis = null;
-        this.usingRedis = false;
-      }
-    } else {
-      this.logger.warn('REDIS_URL not configured, using in-memory cache');
-      this.usingRedis = false;
-    }
-
-    this.logger.log(`CacheService initialized (using ${this.usingRedis ? 'Redis' : 'Memory'})`);
-  }
-
-  async onModuleDestroy() {
-    if (this.redis) {
-      await this.redis.quit();
-      this.logger.log('Redis connection closed');
-    }
-  }
-
-  /**
-   * Get value from cache
-   */
-  async get<T>(key: string): Promise<T | null> {
-    if (this.usingRedis && this.redis) {
-      try {
-        const value = await this.redis.get(key);
-        if (!value) return null;
-
-        this.logger.debug(`Cache HIT (Redis): ${key}`);
-        return JSON.parse(value) as T;
-      } catch (error) {
-        this.logger.error(`Redis get error: ${error.message}`);
-        return this.getFromMemory(key);
-      }
-    } else {
-      return this.getFromMemory(key);
-    }
-  }
-
-  /**
-   * Set value in cache
-   */
-  async set<T>(key: string, value: T, ttlMs: number = this.DEFAULT_TTL * 1000): Promise<void> {
-    if (this.usingRedis && this.redis) {
-      try {
-        const ttlSeconds = Math.ceil(ttlMs / 1000);
-        await this.redis.setex(key, ttlSeconds, JSON.stringify(value));
-        this.logger.debug(`Cache SET (Redis): ${key}, TTL: ${ttlSeconds}s`);
-      } catch (error) {
-        this.logger.error(`Redis set error: ${error.message}`);
-        this.setInMemory(key, value, ttlMs);
-      }
-    } else {
-      this.setInMemory(key, value, ttlMs);
-    }
-  }
-
-  /**
-   * Delete specific key
-   */
-  async delete(key: string): Promise<void> {
-    if (this.usingRedis && this.redis) {
-      try {
-        await this.redis.del(key);
-        this.logger.debug(`Cache DELETE (Redis): ${key}`);
-      } catch (error) {
-        this.logger.error(`Redis delete error: ${error.message}`);
-        this.memoryCache.delete(key);
-      }
-    } else {
-      this.memoryCache.delete(key);
-    }
-  }
-
-  /**
-   * Delete all keys matching pattern
-   */
-  async deletePattern(pattern: string): Promise<void> {
-    if (this.usingRedis && this.redis) {
-      try {
-        const stream = this.redis.scanStream({
-          match: `${pattern}*`,
-          count: 100,
-        });
-
-        const keys: string[] = [];
-
-        for await (const resultKeys of stream) {
-          keys.push(...resultKeys);
-        }
-
-        if (keys.length > 0) {
-          await this.redis.del(...keys);
-          this.logger.debug(`Cache DELETE pattern (Redis): ${pattern}, deleted ${keys.length} keys`);
-        }
-      } catch (error) {
-        this.logger.error(`Redis deletePattern error: ${error.message}`);
-        this.deletePatternFromMemory(pattern);
-      }
-    } else {
-      this.deletePatternFromMemory(pattern);
-    }
-  }
-
-  /**
-   * Clear all cache
-   */
-  async clear(): Promise<void> {
-    if (this.usingRedis && this.redis) {
-      try {
-        await this.redis.flushdb();
-        this.logger.log('Cache cleared (Redis)');
-      } catch (error) {
-        this.logger.error(`Redis clear error: ${error.message}`);
-        this.memoryCache.clear();
-      }
-    } else {
-      const size = this.memoryCache.size;
-      this.memoryCache.clear();
-      this.logger.log(`Cache cleared (Memory): ${size} entries removed`);
-    }
-  }
-
-  /**
-   * Get cache statistics
-   */
-  async getStats(): Promise<{ type: string; size: number; keys?: string[] }> {
-    if (this.usingRedis && this.redis) {
-      try {
-        const dbsize = await this.redis.dbsize();
-        return {
-          type: 'redis',
-          size: dbsize,
-        };
-      } catch (error) {
-        this.logger.error(`Redis stats error: ${error.message}`);
-      }
-    }
-
-    return {
-      type: 'memory',
-      size: this.memoryCache.size,
-      keys: Array.from(this.memoryCache.keys()),
-    };
-  }
-
-  // Private memory cache methods (fallback)
-
-  private getFromMemory<T>(key: string): T | null {
-    const entry = this.memoryCache.get(key);
-
-    if (!entry) {
-      return null;
-    }
-
-    if (Date.now() > entry.expiresAt) {
-      this.memoryCache.delete(key);
-      this.logger.debug(`Cache expired (Memory): ${key}`);
-      return null;
-    }
-
-    this.logger.debug(`Cache HIT (Memory): ${key}`);
-    return entry.data as T;
-  }
-
-  private setInMemory<T>(key: string, value: T, ttlMs: number): void {
-    const expiresAt = Date.now() + ttlMs;
-    this.memoryCache.set(key, { data: value, expiresAt });
-    this.logger.debug(`Cache SET (Memory): ${key}, TTL: ${ttlMs}ms`);
-  }
-
-  private deletePatternFromMemory(pattern: string): void {
-    let deletedCount = 0;
-    for (const key of this.memoryCache.keys()) {
-      if (key.startsWith(pattern)) {
-        this.memoryCache.delete(key);
-        deletedCount++;
-      }
-    }
-    this.logger.debug(`Cache DELETE pattern (Memory): ${pattern}, deleted ${deletedCount} keys`);
-  }
-
-  /**
-   * Clean expired entries from memory cache (cron job)
-   */
-  @Cron(CronExpression.EVERY_5_MINUTES)
-  cleanupExpiredMemoryCache(): void {
-    if (this.usingRedis) {
-      // Redis handles expiration automatically
-      return;
-    }
-
-    const now = Date.now();
-    let cleanedCount = 0;
-
-    for (const [key, entry] of this.memoryCache.entries()) {
-      if (now > entry.expiresAt) {
-        this.memoryCache.delete(key);
-        cleanedCount++;
-      }
-    }
-
-    if (cleanedCount > 0) {
-      this.logger.log(`Cleanup (Memory): removed ${cleanedCount} expired entries`);
-    }
-  }
-}
-```
-
-**Step 3: Update Environment Configuration**
-
-File: `backend/.env.example`
-
-Add:
-```bash
-# Redis Cache (Optional - for production scalability)
-# If not provided, falls back to in-memory cache
-# Format: redis://host:port or redis://user:password@host:port
-REDIS_URL=redis://localhost:6379
-```
-
-**Step 4: No Code Changes Needed**
-
-The service automatically:
-- Detects Redis availability
-- Falls back to memory cache if Redis unavailable
-- Handles connection failures gracefully
-- Switches to memory if Redis fails
-
-**Verification Steps:**
-
-**Without Redis:**
-1. Do NOT set REDIS_URL
-2. Start application
-3. Check logs for: "REDIS_URL not configured, using in-memory cache"
-4. Verify caching works
-5. Test cache invalidation
-
-**With Redis:**
-1. Start Redis locally: `docker run -d -p 6379:6379 redis:alpine`
-2. Set REDIS_URL=redis://localhost:6379
-3. Start application
-4. Check logs for: "✅ Redis cache connected"
-5. Test cache operations
-6. Use Redis CLI to inspect: `redis-cli KEYS "product:*"`
-7. Verify cache invalidation works
-8. Stop Redis - verify app falls back to memory cache
-
-**Production Deployment:**
-1. Provision Redis instance (AWS ElastiCache, Redis Cloud, etc.)
-2. Set REDIS_URL environment variable
-3. Configure Redis password if required
-4. Monitor Redis metrics:
-   - Memory usage
-   - Hit rate
-   - Eviction count
-   - Connection count
-
-**Performance Monitoring:**
-Add endpoint to check cache stats:
-
-File: `backend/src/app.controller.ts`
-
-```typescript
-@Get('cache-stats')
-@Roles('admin')
-async getCacheStats() {
-  return this.cacheService.getStats();
-}
-```
-
-**Redis Configuration Recommendations:**
-- Max memory: 256MB - 1GB depending on catalog size
-- Eviction policy: `allkeys-lru` (least recently used)
-- Persistence: `appendonly no` (cache can be rebuilt)
-- Max connections: 50-100
-
-**Cost Considerations:**
-- AWS ElastiCache: ~$15-30/month for cache.t3.micro
-- Redis Cloud: Free tier available (30MB)
-- Self-hosted: Minimal cost if existing infrastructure
-
-**Decision Matrix:**
-- Single instance + <1000 req/min → Skip Redis
-- Multiple instances → Use Redis
-- >5000 req/min → Use Redis
-- Budget limited → Skip Redis initially
-
----
-
-## Phase 6 – Testing & Documentation (Optional)
-
-====================================================================
-======================== MASTER PROMPT 11 =============================
-====================================================================
-
-**Objective:** Document API endpoints for external developers (optional)
-
-**Scope:** This prompt is OPTIONAL and should only be executed if:
-- API will be consumed by external developers
-- Documentation is required for client development
-- API versioning/stability is a concern
-
-**Skip This Prompt If:**
-- Internal use only
-- No external API consumers
-- Time/budget constraints
-
-**Implementation Approach:**
-Consider using OpenAPI/Swagger for auto-generated documentation.
-
-**Quick Setup:**
-
-```bash
-cd backend
-npm install --save @nestjs/swagger
-```
-
-Then follow NestJS Swagger documentation to add decorators to DTOs and controllers.
-
-**Alternative:** Manual API documentation in markdown.
-
-**This prompt intentionally left minimal as it's optional post-launch work.**
-
-====================================================================
-======================== END OF MASTER PROMPTS ====================
-====================================================================
 
 ## Execution Summary
 
-**Total Prompts:** 15
-- Critical (Must Fix): 2
-- High Priority: 4
-- Medium Priority: 5
-- Low Priority: 4
+**Total Prompts:** 6 (4 must-fix, 2 recommended)
 
 **Estimated Timeline:**
-- Phase 1 (Critical): 4-6 hours
-- Phase 2 (Cache/Data): 8-12 hours
-- Phase 3 (API Consistency): 6-8 hours
-- Phase 4 (Security/UX): 8-10 hours
-- Phase 5 (Performance): 8-12 hours (optional)
-- Phase 6 (Docs): 4-6 hours (optional)
+- Critical Priority (Prompts 1): 4-6 hours
+- High Priority (Prompts 2-4): 12-18 hours
+- Medium Priority (Prompts 5-6): 8-12 hours
 
-**Total Core Work:** 26-36 hours
-**Total With Optional:** 38-54 hours
+**Total Core Work:** 24-36 hours
+**Recommended for Launch:** All 6 prompts
 
-**Priority Execution Order:**
-1. Execute Phase 1 immediately (blocks admin functionality)
-2. Execute Phase 2 before any load testing
-3. Execute Phase 3 for consistency before launch
-4. Execute Phase 4 before production deployment
-5. Execute Phase 5 post-launch if needed
-6. Execute Phase 6 if external API consumers exist
+**Priority Order:**
+1. 🔴 Execute MASTER PROMPT 1 immediately (blocks production)
+2. 🟡 Execute MASTER PROMPTS 2-4 before load testing
+3. 🟢 Execute MASTER PROMPTS 5-6 before production launch
+
+**Success Criteria After All Prompts:**
+- ✅ No hardcoded credentials in source
+- ✅ Cache invalidation targets correct keys only
+- ✅ Relation updates are differential
+- ✅ Error boundaries prevent blank screens
+- ✅ Auth state managed in single location
+- ✅ All API responses have consistent structure
 
 **Testing Strategy:**
 - Manual testing after each prompt
-- Integration testing after each phase
-- Full regression testing before deployment
+- Integration testing after each phase (Critical → High → Medium)
+- Full regression testing before production deployment
 
 **Rollback Strategy:**
 - Git commit after each successful prompt execution
-- Tag stable versions: `v1.0.0-prompt-X-complete`
-- Keep database backups before schema changes
+- Tag stable versions: `git tag v1.0.0-stabilized-prompt-X`
+- Keep database backups before schema changes (if any)
 
-**Success Criteria:**
-After all prompts executed:
-- ✅ Admin can edit DRAFT products
-- ✅ No hardcoded credentials in source
-- ✅ Cache invalidation targets specific keys only
-- ✅ Relation updates are differential
-- ✅ All endpoints return consistent paginated responses
-- ✅ Error boundaries prevent blank screen crashes
-- ✅ Auth state managed in single location
-- ✅ Admin gets detailed error messages in production
-
-**Final Checklist:**
-- [ ] All Phase 1 prompts executed and tested
-- [ ] All Phase 2 prompts executed and tested
-- [ ] All Phase 3 prompts executed and tested
-- [ ] All Phase 4 prompts executed and tested
-- [ ] Optional phases evaluated for necessity
-- [ ] Full regression test suite run
-- [ ] Production deployment plan documented
-- [ ] Rollback procedures documented and tested
+**Post-Execution Checklist:**
+- [ ] All prompts executed in order
+- [ ] All tests passed
+- [ ] No TypeScript compilation errors
+- [ ] No runtime errors in development
+- [ ] Production build successful
+- [ ] All features tested end-to-end
+- [ ] Performance validated
+- [ ] Security scan completed
