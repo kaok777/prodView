@@ -67,7 +67,7 @@ export class CacheService implements OnModuleInit {
   deletePattern(pattern: string): void {
     let deletedCount = 0;
     for (const key of this.cache.keys()) {
-      if (key.includes(pattern)) {
+      if (key.startsWith(pattern)) {
         this.cache.delete(key);
         deletedCount++;
       }

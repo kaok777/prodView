@@ -27,7 +27,7 @@ export class ProductsService {
       throw new BadRequestException('Limit cannot exceed 100');
     }
 
-    const cacheKey = `latest_products:${limit}`;
+    const cacheKey = `product:latest:${limit}`;
     const cached = this.cacheService.get(cacheKey);
     if (cached) {
       return cached;
@@ -60,7 +60,7 @@ export class ProductsService {
   }
 
   async getProductById(productId: string) {
-    const cacheKey = `product:${productId}`;
+    const cacheKey = `product:single:${productId}`;
     const cached = this.cacheService.get(cacheKey);
     if (cached) {
       return cached;
@@ -199,7 +199,7 @@ export class ProductsService {
   }
 
   async getProductsByCategory(categoryId: string, page: number = 1, pageSize: number = 100, sortBy: string = 'latest') {
-    const cacheKey = `category_products:${categoryId}:${page}:${pageSize}:${sortBy}`;
+    const cacheKey = `product:category:${categoryId}:${page}:${pageSize}:${sortBy}`;
     const cached = this.cacheService.get(cacheKey);
     if (cached) {
       return cached;
@@ -263,7 +263,7 @@ export class ProductsService {
   }
 
   async getProductsByUseCase(useCaseId: string, page: number = 1, pageSize: number = 100, sortBy: string = 'latest') {
-    const cacheKey = `usecase_products:${useCaseId}:${page}:${pageSize}:${sortBy}`;
+    const cacheKey = `product:usecase:${useCaseId}:${page}:${pageSize}:${sortBy}`;
     const cached = this.cacheService.get(cacheKey);
     if (cached) {
       return cached;
@@ -465,9 +465,6 @@ export class ProductsService {
    * Called after any product mutation (create, update, delete)
    */
   private invalidateProductCaches(): void {
-    this.cacheService.deletePattern('latest_products');
-    this.cacheService.deletePattern('category_products');
-    this.cacheService.deletePattern('usecase_products');
     this.cacheService.deletePattern('product:');
   }
 
