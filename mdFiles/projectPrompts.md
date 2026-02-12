@@ -15,7 +15,7 @@
 ## Phase 1 – Critical Stability
 
 ====================================================================
-======================== MASTER PROMPT =============================
+======================== MASTER PROMPT 1 =============================
 ====================================================================
 
 **Objective:** Fix admin inability to edit DRAFT/ARCHIVED products
@@ -107,7 +107,7 @@ const productRes = await api.get(`/products/admin/${id}`);
 - Ensure ParseUUIDPipe is imported and used correctly
 
 ====================================================================
-======================== MASTER PROMPT =============================
+======================== MASTER PROMPT 2 =============================
 ====================================================================
 
 **Objective:** Eliminate hardcoded default admin credentials (security vulnerability)
@@ -243,7 +243,7 @@ FIRST_ADMIN_PASSWORD=
 ## Phase 2 – Cache & Data Integrity
 
 ====================================================================
-======================== MASTER PROMPT =============================
+======================== MASTER PROMPT 3 =============================
 ====================================================================
 
 **Objective:** Fix cache over-invalidation bug causing performance degradation
@@ -353,7 +353,7 @@ private invalidateProductCaches(): void {
 - Response times should be more consistent
 
 ====================================================================
-======================== MASTER PROMPT =============================
+======================== MASTER PROMPT 4 =============================
 ====================================================================
 
 **Objective:** Fix inefficient relation update strategy (full delete + recreate)
@@ -500,7 +500,7 @@ if (data.useCaseIds !== undefined) {
 After backend changes, frontend COULD be simplified to send only changed fields, but this is NOT required for the fix to work.
 
 ====================================================================
-======================== MASTER PROMPT =============================
+======================== MASTER PROMPT 5 =============================
 ====================================================================
 
 **Objective:** Add pagination to admin product listing endpoint
@@ -652,7 +652,7 @@ All should return:
 ## Phase 3 – API Consistency & Contract Fixes
 
 ====================================================================
-======================== MASTER PROMPT =============================
+======================== MASTER PROMPT 6 =============================
 ====================================================================
 
 **Objective:** Standardize inconsistent API response shapes across all product endpoints
@@ -827,7 +827,7 @@ Add `hasNext` and `hasPrevious` boolean flags to response for UI convenience.
 ## Phase 4 – Security & UX Improvements
 
 ====================================================================
-======================== MASTER PROMPT =============================
+======================== MASTER PROMPT 7 =============================
 ====================================================================
 
 **Objective:** Add React Error Boundary to prevent blank screen crashes
@@ -1025,7 +1025,7 @@ export default App;
 Integrate with error tracking service (Sentry, Bugsnag, LogRocket) in production.
 
 ====================================================================
-======================== MASTER PROMPT =============================
+======================== MASTER PROMPT 8 =============================
 ====================================================================
 
 **Objective:** Consolidate authentication state management to prevent desync
@@ -1323,7 +1323,7 @@ The AuthManager will automatically clean up legacy `adminSession` keys. No manua
 Add token refresh logic using `AuthManager.willExpireSoon()` to automatically refresh tokens before expiry.
 
 ====================================================================
-======================== MASTER PROMPT =============================
+======================== MASTER PROMPT 9 =============================
 ====================================================================
 
 **Objective:** Improve production admin error messages without exposing details to public
@@ -1562,7 +1562,7 @@ Public endpoints hide errors because:
 ## Phase 5 – Performance Optimization (Post-Launch)
 
 ====================================================================
-======================== MASTER PROMPT =============================
+======================== MASTER PROMPT 10 =============================
 ====================================================================
 
 **Objective:** Implement Redis distributed caching (optional post-launch enhancement)
@@ -1946,7 +1946,7 @@ async getCacheStats() {
 ## Phase 6 – Testing & Documentation (Optional)
 
 ====================================================================
-======================== MASTER PROMPT =============================
+======================== MASTER PROMPT 11 =============================
 ====================================================================
 
 **Objective:** Document API endpoints for external developers (optional)
