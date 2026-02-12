@@ -522,17 +522,76 @@ export class ProductsService {
       throw new BadRequestException('Too many images');
     }
 
-    // Only update relations if provided
+    // Differential update for categories
     if (data.categoryIds !== undefined) {
-      await this.prisma.productCategory.deleteMany({
+      // Fetch existing associations
+      const existingCategories = await this.prisma.productCategory.findMany({
         where: { productId },
+        select: { categoryId: true },
       });
+
+      const existingIds = existingCategories.map((c) => c.categoryId);
+      const newIds = data.categoryIds;
+
+      // Calculate differences
+      const toAdd = newIds.filter((id) => !existingIds.includes(id));
+      const toRemove = existingIds.filter((id) => !newIds.includes(id));
+
+      // Only delete removed associations
+      if (toRemove.length > 0) {
+        await this.prisma.productCategory.deleteMany({
+          where: {
+            productId,
+            categoryId: { in: toRemove },
+          },
+        });
+      }
+
+      // Only add new associations
+      if (toAdd.length > 0) {
+        await this.prisma.productCategory.createMany({
+          data: toAdd.map((categoryId) => ({
+            productId,
+            categoryId,
+          })),
+        });
+      }
     }
 
+    // Differential update for useCases
     if (data.useCaseIds !== undefined) {
-      await this.prisma.productUseCase.deleteMany({
+      // Fetch existing associations
+      const existingUseCases = await this.prisma.productUseCase.findMany({
         where: { productId },
+        select: { useCaseId: true },
       });
+
+      const existingIds = existingUseCases.map((u) => u.useCaseId);
+      const newIds = data.useCaseIds;
+
+      // Calculate differences
+      const toAdd = newIds.filter((id) => !existingIds.includes(id));
+      const toRemove = existingIds.filter((id) => !newIds.includes(id));
+
+      // Only delete removed associations
+      if (toRemove.length > 0) {
+        await this.prisma.productUseCase.deleteMany({
+          where: {
+            productId,
+            useCaseId: { in: toRemove },
+          },
+        });
+      }
+
+      // Only add new associations
+      if (toAdd.length > 0) {
+        await this.prisma.productUseCase.createMany({
+          data: toAdd.map((useCaseId) => ({
+            productId,
+            useCaseId,
+          })),
+        });
+      }
     }
 
     // Build update data object
@@ -556,21 +615,8 @@ export class ProductsService {
       updateData.status = data.status;
     }
 
-    if (data.categoryIds !== undefined) {
-      updateData.categories = {
-        create: data.categoryIds.map((categoryId) => ({
-          categoryId,
-        })),
-      };
-    }
-
-    if (data.useCaseIds !== undefined) {
-      updateData.useCases = {
-        create: data.useCaseIds.map((useCaseId) => ({
-          useCaseId,
-        })),
-      };
-    }
+    // Note: Relations are updated separately above via differential updates
+    // No need to include categories/useCases in updateData
 
     const product = await this.prisma.product.update({
       where: { id: productId },
