@@ -3,6 +3,7 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Layout } from "./components/Layout";
 import { SecurityHeaders } from "./components/SecurityHeaders";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { HomePage } from "./pages/HomePage";
 import { ProductSelectionPage } from "./pages/ProductSelectionPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
@@ -16,11 +17,12 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <SecurityHeaders />
-      <Router>
-        <div className="min-h-screen bg-background text-foreground">
-          <Routes>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <SecurityHeaders />
+        <Router>
+          <div className="min-h-screen bg-background text-foreground">
+            <Routes>
             {/* Admin Routes */}
             <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route
@@ -109,10 +111,11 @@ export default function App() {
                 </Layout>
               }
             />
-          </Routes>
-          <Toaster />
-        </div>
-      </Router>
-    </ThemeProvider>
+            </Routes>
+            <Toaster />
+          </div>
+        </Router>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
