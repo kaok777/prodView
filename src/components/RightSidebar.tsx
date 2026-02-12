@@ -27,9 +27,9 @@ export function RightSidebar() {
       try {
         setLoading(true);
         const response = await api.get('/products/latest', {
-          params: { limit: 10 }
+          params: { page: 1, pageSize: 10 }
         });
-        setLatestProducts(response.data);
+        setLatestProducts(response.data.products || []);
       } catch (error) {
         console.error('Failed to fetch latest products:', error);
         setLatestProducts([]);

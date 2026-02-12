@@ -16,11 +16,13 @@ export function HeroCarousel() {
         setLoading(true);
         const [categoriesRes, productsRes] = await Promise.all([
           api.get('/categories'),
-          api.get('/products/latest?limit=50'),
+          api.get('/products/latest', {
+            params: { page: 1, pageSize: 50 }
+          }),
         ]);
 
         const categories = categoriesRes.data;
-        const allProducts = productsRes.data;
+        const allProducts = productsRes.data.products || [];
 
         // Select one product per category, up to 7
         const heroProducts: any[] = [];

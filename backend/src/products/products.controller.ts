@@ -25,11 +25,18 @@ import { PaginationDto, LimitDto, SearchDto } from '../common/dto/pagination.dto
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  // IMPORTANT: Route order matters to prevent shadowing
+  // Specific routes (latest, search, category/:id, use-case/:id, admin/all) must come BEFORE generic /:id
+  // Do not reorder without careful consideration
+
   @Public()
   @Get('latest')
   @Throttle({ default: { limit: 100, ttl: 60000 } })
-  getLatestProducts(@Query() limitDto: LimitDto) {
-    return this.productsService.getLatestProducts(limitDto.limit || 10);
+  getLatestProducts(@Query() paginationDto: PaginationDto) {
+    return this.productsService.getLatestProducts(
+      paginationDto.pageSize || 40,
+      paginationDto.page || 1,
+    );
   }
 
   @Public()

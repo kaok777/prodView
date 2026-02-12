@@ -25,11 +25,13 @@ export function ProductDetailPage() {
         setLoading(true);
         const [productRes, relatedRes] = await Promise.all([
           api.get(`/products/${id}`),
-          api.get('/products/latest?limit=5'),
+          api.get('/products/latest', {
+            params: { page: 1, pageSize: 5 }
+          }),
         ]);
 
         setProduct(productRes.data);
-        setRelatedProducts(relatedRes.data);
+        setRelatedProducts(relatedRes.data.products || []);
       } catch (error) {
         console.error('Failed to fetch product:', error);
         setProduct(null);

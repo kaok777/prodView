@@ -22,41 +22,60 @@ export class ProductsService {
     private cacheService: CacheService,
   ) {}
 
-  async getLatestProducts(limit: number) {
-    if (limit > 100) {
-      throw new BadRequestException('Limit cannot exceed 100');
+  async getLatestProducts(pageSize: number = 40, page: number = 1) {
+    if (pageSize > 100) {
+      throw new BadRequestException('Page size cannot exceed 100');
     }
 
-    const cacheKey = `product:latest:${limit}`;
+    const skip = (page - 1) * pageSize;
+
+    // Update cache key to include page
+    const cacheKey = `product:latest:${pageSize}:${page}`;
     const cached = this.cacheService.get(cacheKey);
     if (cached) {
       return cached;
     }
 
-    const products = await this.prisma.product.findMany({
-      where: {
-        status: 'PUBLISHED',
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: limit,
-      include: {
-        categories: {
-          include: {
-            category: true,
+    const [products, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where: {
+          status: 'PUBLISHED',
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: pageSize,
+        include: {
+          categories: {
+            include: {
+              category: true,
+            },
+          },
+          useCases: {
+            include: {
+              useCase: true,
+            },
           },
         },
-        useCases: {
-          include: {
-            useCase: true,
-          },
+      }),
+      this.prisma.product.count({
+        where: {
+          status: 'PUBLISHED',
         },
-      },
-    });
+      }),
+    ]);
 
-    this.cacheService.set(cacheKey, products, this.CACHE_TTL.LATEST_PRODUCTS);
-    return products;
+    const result = {
+      products,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
+
+    this.cacheService.set(cacheKey, result, this.CACHE_TTL.LATEST_PRODUCTS);
+    return result;
   }
 
   async getProductById(productId: string) {

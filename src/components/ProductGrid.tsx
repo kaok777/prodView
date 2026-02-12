@@ -41,17 +41,12 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
           });
         } else {
           response = await api.get('/products/latest', {
-            params: { limit: 40 }
+            params: { page: 1, pageSize: 40 }
           });
         }
 
-        if (Array.isArray(response.data)) {
-          setProducts(response.data);
-          setTotalPages(1);
-        } else {
-          setProducts(response.data.products || []);
-          setTotalPages(response.data.totalPages || 1);
-        }
+        setProducts(response.data.products || []);
+        setTotalPages(response.data.totalPages || 1);
       } catch (error) {
         console.error('Failed to fetch products:', error);
         setProducts([]);
@@ -82,6 +77,10 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
       } else if (useCaseId) {
         response = await api.get(`/products/use-case/${useCaseId}`, {
           params: { page: nextPage, pageSize: 40, sortBy }
+        });
+      } else {
+        response = await api.get('/products/latest', {
+          params: { page: nextPage, pageSize: 40 }
         });
       }
 
