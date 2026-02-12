@@ -1,4 +1,4 @@
-import { IsOptional, IsInt, Min, Max, IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsString, MinLength, MaxLength, Matches, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class PaginationDto {
@@ -15,6 +15,11 @@ export class PaginationDto {
   @Min(1, { message: 'Page size must be at least 1' })
   @Max(100, { message: 'Page size must not exceed 100' })
   pageSize?: number = 20;
+
+  @IsOptional()
+  @IsString({ message: 'Sort by must be a string' })
+  @IsIn(['latest', 'mostViewed'], { message: 'Sort by must be either "latest" or "mostViewed"' })
+  sortBy?: string = 'latest';
 }
 
 export class LimitDto {

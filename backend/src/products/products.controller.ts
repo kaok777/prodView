@@ -53,13 +53,12 @@ export class ProductsController {
   getProductsByCategory(
     @Param('categoryId', new ParseUUIDPipe({ version: '4' })) categoryId: string,
     @Query() paginationDto: PaginationDto,
-    @Query('sortBy') sortBy?: string,
   ) {
     return this.productsService.getProductsByCategory(
       categoryId,
       paginationDto.page || 1,
       paginationDto.pageSize || 20,
-      sortBy || 'latest',
+      paginationDto.sortBy || 'latest',
     );
   }
 
@@ -69,13 +68,25 @@ export class ProductsController {
   getProductsByUseCase(
     @Param('useCaseId', new ParseUUIDPipe({ version: '4' })) useCaseId: string,
     @Query() paginationDto: PaginationDto,
-    @Query('sortBy') sortBy?: string,
   ) {
     return this.productsService.getProductsByUseCase(
       useCaseId,
       paginationDto.page || 1,
       paginationDto.pageSize || 20,
-      sortBy || 'latest',
+      paginationDto.sortBy || 'latest',
+    );
+  }
+
+  @Roles('admin')
+  @Get('admin/all')
+  @Throttle({ default: { limit: 50, ttl: 60000 } })
+  getAllProductsForAdmin(
+    @CurrentUser() user: any,
+    @Query() limitDto: LimitDto,
+  ) {
+    return this.productsService.getAllProductsForAdmin(
+      user.id,
+      limitDto.limit || 100,
     );
   }
 
@@ -93,19 +104,6 @@ export class ProductsController {
   @Throttle({ default: { limit: 200, ttl: 60000 } })
   getProductById(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
     return this.productsService.getProductById(id);
-  }
-
-  @Roles('admin')
-  @Get('admin/all')
-  @Throttle({ default: { limit: 50, ttl: 60000 } })
-  getAllProductsForAdmin(
-    @CurrentUser() user: any,
-    @Query() limitDto: LimitDto,
-  ) {
-    return this.productsService.getAllProductsForAdmin(
-      user.id,
-      limitDto.limit || 100,
-    );
   }
 
   @Roles('admin')
