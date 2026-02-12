@@ -79,6 +79,15 @@ export class ProductsController {
     );
   }
 
+  @Roles('admin')
+  @Get('admin/:id')
+  @Throttle({ default: { limit: 200, ttl: 60000 } })
+  getProductByIdAdmin(
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string
+  ) {
+    return this.productsService.getProductByIdAdmin(id);
+  }
+
   @Public()
   @Get(':id')
   @Throttle({ default: { limit: 200, ttl: 60000 } })

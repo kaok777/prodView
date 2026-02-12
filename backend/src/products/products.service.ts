@@ -90,6 +90,24 @@ export class ProductsService {
     return product;
   }
 
+  async getProductByIdAdmin(productId: string) {
+    return this.prisma.product.findUnique({
+      where: { id: productId },
+      include: {
+        categories: {
+          include: {
+            category: true,
+          },
+        },
+        useCases: {
+          include: {
+            useCase: true,
+          },
+        },
+      },
+    });
+  }
+
   async searchProducts(keyword: string, page: number = 1, pageSize: number = 100, ip?: string) {
     const rateLimitKey = `search:${ip || 'unknown'}`;
     const rateCheck = await this.rateLimitService.checkRateLimit(
@@ -343,6 +361,20 @@ export class ProductsService {
       status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
     },
   ) {
+    // Validate adminId exists
+    if (!adminId) {
+      throw new BadRequestException('Admin ID is required');
+    }
+
+    const adminExists = await this.prisma.adminUser.findUnique({
+      where: { id: adminId },
+      select: { id: true },
+    });
+
+    if (!adminExists) {
+      throw new BadRequestException('Invalid admin user reference. Please log in again.');
+    }
+
     const nameValidation = this.validationService.validateInput('text', data.name);
     if (!nameValidation.valid) {
       throw new BadRequestException(`Invalid name: ${nameValidation.error}`);
@@ -370,52 +402,62 @@ export class ProductsService {
       throw new BadRequestException('Too many images');
     }
 
-    const product = await this.prisma.product.create({
-      data: {
-        name: data.name.trim(),
-        description: data.description.trim(),
-        affiliateUrl: data.affiliateUrl.trim(),
-        images: data.images,
-        status: data.status || 'DRAFT',
-        createdById: adminId,
-        updatedById: adminId,
-        categories: {
-          create: data.categoryIds.map((categoryId) => ({
-            categoryId,
-          })),
-        },
-        useCases: {
-          create: data.useCaseIds.map((useCaseId) => ({
-            useCaseId,
-          })),
-        },
-      },
-      include: {
-        categories: {
-          include: {
-            category: true,
+    try {
+      const product = await this.prisma.product.create({
+        data: {
+          name: data.name.trim(),
+          description: data.description.trim(),
+          affiliateUrl: data.affiliateUrl.trim(),
+          images: data.images,
+          status: data.status || 'DRAFT',
+          createdById: adminId,
+          updatedById: adminId,
+          categories: {
+            create: data.categoryIds.map((categoryId) => ({
+              categoryId,
+            })),
+          },
+          useCases: {
+            create: data.useCaseIds.map((useCaseId) => ({
+              useCaseId,
+            })),
           },
         },
-        useCases: {
-          include: {
-            useCase: true,
+        include: {
+          categories: {
+            include: {
+              category: true,
+            },
+          },
+          useCases: {
+            include: {
+              useCase: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    await this.auditService.logAction(
-      adminId,
-      'create_product',
-      'product',
-      product.id,
-      { name: data.name },
-    );
+      await this.auditService.logAction(
+        adminId,
+        'create_product',
+        'product',
+        product.id,
+        { name: data.name },
+      );
 
-    // Invalidate relevant caches
-    this.invalidateProductCaches();
+      // Invalidate relevant caches
+      this.invalidateProductCaches();
 
-    return product;
+      return product;
+    } catch (error: any) {
+      // Handle Prisma foreign key constraint errors
+      if (error.code === 'P2003') {
+        throw new BadRequestException(
+          'Invalid reference: One or more related entities do not exist. Please verify categories and use cases.',
+        );
+      }
+      throw error;
+    }
   }
 
   /**

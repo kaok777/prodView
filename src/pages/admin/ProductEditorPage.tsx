@@ -38,7 +38,7 @@ export function ProductEditorPage() {
         setUseCases(useCasesRes.data);
 
         if (isEditing && id) {
-          const productRes = await api.get(`/products/${id}`);
+          const productRes = await api.get(`/products/admin/${id}`);
           const product = productRes.data;
 
           setFormData({
