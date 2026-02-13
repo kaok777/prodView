@@ -10,7 +10,8 @@
       "Bash(npx tsc:*)",
       "Bash(npx ts-node:*)",
       "Bash(npx prisma migrate:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "WebFetch(domain:code.claude.com)"
     ],
     "deny": [],
     "ask": []
