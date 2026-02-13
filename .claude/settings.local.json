@@ -11,7 +11,10 @@
       "Bash(npx ts-node:*)",
       "Bash(npx prisma migrate:*)",
       "Bash(awk:*)",
-      "WebFetch(domain:code.claude.com)"
+      "WebFetch(domain:code.claude.com)",
+      "Bash(pg_isready:*)",
+      "Bash(timeout 2 bash -c \"cat < /dev/null > /dev/tcp/localhost/5432\")",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []

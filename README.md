@@ -2,6 +2,31 @@
 
 **ProdView** is a modern affiliate product showcase platform built with a decoupled architecture featuring a NestJS backend API and React frontend.
 
+---
+
+## ⚡ **QUICK START** - Image Rendering Fix
+
+**If images are not displaying**, the servers need to be started:
+
+```bash
+# Automated startup (recommended)
+./start-dev.sh
+
+# OR manual startup:
+# Terminal 1: Start PostgreSQL
+sudo service postgresql start
+
+# Terminal 2: Start Backend
+cd backend && npm run start:dev
+
+# Terminal 3: Start Frontend
+npm run dev
+```
+
+📖 **For detailed troubleshooting**: See [`mdFiles/IMAGE_FIX_RESOLUTION.md`](./mdFiles/IMAGE_FIX_RESOLUTION.md) and [`START_SERVERS.md`](./START_SERVERS.md)
+
+---
+
 ## 🏗️ Architecture
 
 - **Backend**: NestJS + PostgreSQL + Prisma ORM
@@ -345,11 +370,27 @@ This project is licensed under the MIT License.
 - Ensure database `prodview` exists
 - Verify user has proper permissions
 
+### Images not rendering/loading
+
+**Root cause:** Backend server not running (serves static files)
+
+**Quick fix:**
+```bash
+# Start all servers
+./start-dev.sh
+
+# Or manually start backend
+cd backend && npm run start:dev
+```
+
+**Detailed guide:** See [`mdFiles/IMAGE_FIX_RESOLUTION.md`](./mdFiles/IMAGE_FIX_RESOLUTION.md)
+
 ### Image upload fails
 
 - Check UPLOAD_DIR exists and is writable
 - Verify MAX_FILE_SIZE is appropriate
 - Check file extension is allowed
+- Ensure backend server is running
 
 ## 📧 Support
 
