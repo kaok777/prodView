@@ -87,7 +87,9 @@ async function bootstrap() {
     }),
   );
 
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  // Static file serving: When running from dist/src/main.js, we need to go up two levels
+  // __dirname in production = dist/src, so we need '../..' to reach project root
+  app.useStaticAssets(join(__dirname, '..', '..', 'uploads'), {
     prefix: '/uploads/',
     maxAge: '30d',
     setHeaders: (res, path) => {
