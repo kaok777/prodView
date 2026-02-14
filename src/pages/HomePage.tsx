@@ -13,19 +13,16 @@ export function HomePage() {
         canonicalUrl={window.location.origin}
       />
 
-      <div className="space-y-12">
+      <div className="space-y-0">
         {/* Hero Carousel */}
         <section>
           <HeroCarousel />
         </section>
 
         {/* Hero Section */}
-        <section className="text-center py-12">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">
-            Discover Amazing Products
-          </h1>
+        <section className="text-center py-6">
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Find the perfect products for your needs. Browse by category, use case, or search for something specific.
+            Discover the perfect products for your needs. Browse by category, use case, or search for something specific.
           </p>
           <Link
             to="/products"

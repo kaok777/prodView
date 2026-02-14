@@ -104,7 +104,7 @@ export function HeroCarousel() {
   const currentProduct = products[currentIndex];
 
   return (
-    <div className="relative w-full h-96 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-lg overflow-hidden group">
+    <div className="relative w-full h-80 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-lg overflow-hidden group">
       {/* Background Image */}
       <div className="absolute inset-0">
         {currentProduct.images && currentProduct.images[0] && (
