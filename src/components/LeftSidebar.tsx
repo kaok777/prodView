@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import api from "../lib/api";
+import { useSidebarVisibility } from "../hooks/useSidebarVisibility";
+import { SidebarToggle } from "./SidebarToggle";
 
 export function LeftSidebar() {
   const [activeTab, setActiveTab] = useState<"categories" | "useCases">("categories");
@@ -9,18 +10,11 @@ export function LeftSidebar() {
   const [categories, setCategories] = useState<any[]>([]);
   const [useCases, setUseCases] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Auto-collapse on mobile and tablet
-  useEffect(() => {
-    const handleResize = () => {
-      setIsCollapsed(window.innerWidth < 1024);
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const { isCollapsed, setIsCollapsed, isFirstVisit } = useSidebarVisibility({
+    breakpoint: 1024,
+    storageKey: "left-sidebar-visited",
+  });
 
   const selectedCategory = searchParams.get("category");
   const selectedUseCase = searchParams.get("useCase");
@@ -58,18 +52,18 @@ export function LeftSidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-16 left-0 z-40 lg:z-0 bg-card border-r h-[calc(100vh-4rem)] transition-transform duration-300 ease-in-out ${
+        className={`fixed lg:sticky top-16 left-0 z-40 lg:z-40 bg-card border-r h-[calc(100vh-4rem)] transition-transform duration-300 ease-in-out ${
           isCollapsed ? '-translate-x-full lg:translate-x-0 lg:w-0' : 'translate-x-0 w-64 lg:w-64'
         }`}
+        aria-label="Product filters sidebar"
       >
-        {/* Toggle Button */}
-        <button
+        <SidebarToggle
+          isCollapsed={isCollapsed}
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="absolute -right-3 top-4 z-50 p-1.5 bg-primary text-primary-foreground rounded-full shadow-lg hover:scale-110 transition-transform"
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-        </button>
+          position="left"
+          label={isCollapsed ? "Expand filters" : "Collapse filters"}
+          showFirstVisitPulse={isFirstVisit && isCollapsed}
+        />
 
         <div
           className={`h-full overflow-y-auto custom-scrollbar p-4 space-y-4 ${

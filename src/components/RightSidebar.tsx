@@ -1,24 +1,18 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ProductImage } from "./ProductImage";
 import api from "../lib/api";
+import { useSidebarVisibility } from "../hooks/useSidebarVisibility";
+import { SidebarToggle } from "./SidebarToggle";
 
 export function RightSidebar() {
   const [latestProducts, setLatestProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Auto-collapse on screens smaller than xl
-  useEffect(() => {
-    const handleResize = () => {
-      setIsCollapsed(window.innerWidth < 1280);
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const { isCollapsed, setIsCollapsed, isFirstVisit } = useSidebarVisibility({
+    breakpoint: 1280,
+    storageKey: "right-sidebar-visited",
+  });
 
   useEffect(() => {
     const fetchLatestProducts = async () => {
@@ -42,17 +36,17 @@ export function RightSidebar() {
   return (
     <aside
       className={`hidden xl:block sticky top-16 bg-card border-l h-[calc(100vh-4rem)] transition-all duration-300 ease-in-out ${
-        isCollapsed ? 'w-0' : 'w-80'
+        isCollapsed ? 'xl:w-0' : 'w-80'
       }`}
+      aria-label="Latest products sidebar"
     >
-      {/* Toggle Button */}
-      <button
+      <SidebarToggle
+        isCollapsed={isCollapsed}
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -left-3 top-4 z-50 p-1.5 bg-primary text-primary-foreground rounded-full shadow-lg hover:scale-110 transition-transform"
-        aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-      >
-        {isCollapsed ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-      </button>
+        position="right"
+        label={isCollapsed ? "Expand latest products" : "Collapse latest products"}
+        showFirstVisitPulse={isFirstVisit && isCollapsed}
+      />
 
       <div
         className={`h-full overflow-y-auto custom-scrollbar p-4 space-y-4 ${
