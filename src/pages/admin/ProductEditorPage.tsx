@@ -335,6 +335,7 @@ export function ProductEditorPage() {
                       type="button"
                       onClick={() => removeImage(index)}
                       className="absolute top-2 right-2 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 ease-in-out hover:scale-110"
+                      aria-label={`Remove image ${index + 1}`}
                     >
                       <X className="w-3 h-3" />
                     </button>

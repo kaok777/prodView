@@ -144,14 +144,14 @@ export function CategoriesManagementPage() {
                     <button
                       onClick={() => handleEdit(category)}
                       className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all duration-150 ease-out hover:scale-110"
-                      title="Edit"
+                      aria-label={`Edit ${category.name}`}
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(category.id, category.name)}
                       className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-all duration-150 ease-out hover:scale-110"
-                      title="Delete"
+                      aria-label={`Delete ${category.name}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -174,6 +174,7 @@ export function CategoriesManagementPage() {
               <button
                 onClick={handleCloseModal}
                 className="p-1 hover:bg-muted rounded transition-all duration-150 ease-out hover:scale-110"
+                aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -197,10 +198,11 @@ export function CategoriesManagementPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
+                <label htmlFor="parent-category-select" className="block text-sm font-medium mb-2">
                   Parent Category (Optional)
                 </label>
                 <select
+                  id="parent-category-select"
                   value={formData.parentCategoryId}
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, parentCategoryId: e.target.value }))

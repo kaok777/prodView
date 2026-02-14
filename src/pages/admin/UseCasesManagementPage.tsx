@@ -130,14 +130,14 @@ export function UseCasesManagementPage() {
                     <button
                       onClick={() => handleEdit(useCase)}
                       className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-all duration-150 ease-out hover:scale-110"
-                      title="Edit"
+                      aria-label={`Edit ${useCase.name}`}
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(useCase.id, useCase.name)}
                       className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-all duration-150 ease-out hover:scale-110"
-                      title="Delete"
+                      aria-label={`Delete ${useCase.name}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -160,6 +160,7 @@ export function UseCasesManagementPage() {
               <button
                 onClick={handleCloseModal}
                 className="p-1 hover:bg-muted rounded transition-all duration-150 ease-out hover:scale-110"
+                aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
               </button>
