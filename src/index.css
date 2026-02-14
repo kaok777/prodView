@@ -65,22 +65,33 @@
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 1;
+    line-clamp: 1;
   }
-  
+
   .line-clamp-2 {
     overflow: hidden;
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
   }
-  
+
   .line-clamp-3 {
     overflow: hidden;
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
   }
 
+  /* Modern scrollbar styling with WebKit fallback */
+  .custom-scrollbar {
+    /* Modern Firefox/Chrome */
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) hsl(var(--muted));
+  }
+
+  /* WebKit browsers (Chrome, Safari, Edge) fallback */
   .custom-scrollbar::-webkit-scrollbar {
     width: 8px;
   }
@@ -91,11 +102,6 @@
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-border rounded hover:bg-muted-foreground/30;
-  }
-
-  .custom-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: hsl(var(--border)) hsl(var(--muted));
   }
 }
 
