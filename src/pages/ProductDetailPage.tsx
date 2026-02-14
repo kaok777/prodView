@@ -179,6 +179,8 @@ export function ProductDetailPage() {
                     className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${
                       index === currentMediaIndex ? "border-primary" : "border-transparent"
                     }`}
+                    aria-label={`View image ${index + 1}`}
+                    aria-pressed={Boolean(index === currentMediaIndex)}
                   >
                     <ProductImage
                       imagePath={imagePath}

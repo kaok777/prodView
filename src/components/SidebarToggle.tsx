@@ -46,7 +46,7 @@ export function SidebarToggle({
           showFirstVisitPulse ? "animate-pulse-subtle" : ""
         }`}
         aria-label={label}
-        aria-expanded={!isCollapsed}
+        aria-expanded={Boolean(!isCollapsed)}
       >
         <Icon className="w-4 h-4" />
       </button>
