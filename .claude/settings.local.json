@@ -14,7 +14,8 @@
       "WebFetch(domain:code.claude.com)",
       "Bash(pg_isready:*)",
       "Bash(timeout 2 bash -c \"cat < /dev/null > /dev/tcp/localhost/5432\")",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(wc -l src/**/*.{ts,tsx})"
     ],
     "deny": [],
     "ask": []
