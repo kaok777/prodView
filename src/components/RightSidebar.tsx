@@ -9,12 +9,10 @@ export function RightSidebar() {
   const [loading, setLoading] = useState(true);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Auto-collapse on mobile
+  // Auto-collapse on screens smaller than xl
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 1024) {
-        setIsCollapsed(true);
-      }
+      setIsCollapsed(window.innerWidth < 1280);
     };
 
     handleResize();
@@ -42,7 +40,11 @@ export function RightSidebar() {
   }, []);
 
   return (
-    <aside className={`relative bg-card border-l min-h-[calc(100vh-4rem)] transition-all duration-300 ${isCollapsed ? 'w-0' : 'w-80'}`}>
+    <aside
+      className={`hidden xl:block sticky top-16 bg-card border-l h-[calc(100vh-4rem)] transition-all duration-300 ease-in-out ${
+        isCollapsed ? 'w-0' : 'w-80'
+      }`}
+    >
       {/* Toggle Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
@@ -52,7 +54,11 @@ export function RightSidebar() {
         {isCollapsed ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
       </button>
 
-      <div className={`p-4 space-y-4 ${isCollapsed ? 'opacity-0 invisible' : 'opacity-100 visible'} transition-opacity duration-300`}>
+      <div
+        className={`h-full overflow-y-auto custom-scrollbar p-4 space-y-4 ${
+          isCollapsed ? 'opacity-0 invisible' : 'opacity-100 visible'
+        } transition-opacity duration-300`}
+      >
         <h3 className="text-lg font-semibold">Latest Products</h3>
 
         {loading ? (

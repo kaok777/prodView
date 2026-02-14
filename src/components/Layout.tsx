@@ -10,9 +10,9 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="flex">
+      <div className="flex relative">
         <LeftSidebar />
-        <main className="flex-1 min-h-[calc(100vh-4rem)] p-6">
+        <main className="flex-1 min-h-[calc(100vh-4rem)] p-4 md:p-6 lg:p-8 overflow-x-hidden">
           {children}
         </main>
         <RightSidebar />

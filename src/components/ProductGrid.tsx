@@ -97,12 +97,12 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="w-full max-w-7xl mx-auto space-y-4">
         <div className="flex justify-between items-center">
           <div className="h-8 bg-muted rounded w-32 animate-pulse"></div>
           <div className="h-8 bg-muted rounded w-20 animate-pulse"></div>
         </div>
-        <div className={view === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
+        <div className={view === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6" : "space-y-4"}>
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="animate-pulse">
               <div className={view === "grid" ? "aspect-video bg-muted rounded-lg mb-4" : "h-24 bg-muted rounded-lg mb-2"}></div>
@@ -116,9 +116,9 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
-        <h2 className="text-2xl font-bold">
+        <h2 className="text-xl md:text-2xl font-bold">
           {searchQuery ? `Search results for "${searchQuery}"` :
            categoryId ? "Category Products" :
            useCaseId ? "Use Case Products" :
@@ -128,27 +128,32 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
           {/* Sort Filter - show for category or use case filter */}
           {(categoryId || useCaseId) && (
             <div className="relative">
+              <label htmlFor="sort-select" className="sr-only">
+                Sort products by
+              </label>
               <select
+                id="sort-select"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="appearance-none px-4 py-2 pr-10 rounded-lg border border-border bg-background text-foreground hover:bg-accent transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary"
+                className="appearance-none px-3 md:px-4 py-2 pr-8 md:pr-10 text-sm rounded-lg border border-border bg-background text-foreground hover:bg-accent transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label="Sort products by"
               >
                 <option value="latest">Latest</option>
                 <option value="mostViewed">Most Viewed</option>
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <ChevronDown className="absolute right-2 md:right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             </div>
           )}
           <button
             onClick={() => setView("grid")}
-            className={`p-2 rounded-lg ${view === "grid" ? "bg-primary text-primary-foreground" : "bg-accent"}`}
+            className={`p-2 rounded-lg transition-colors ${view === "grid" ? "bg-primary text-primary-foreground" : "bg-accent hover:bg-accent/80"}`}
             aria-label="Grid view"
           >
             <Grid className="w-4 h-4" />
           </button>
           <button
             onClick={() => setView("list")}
-            className={`p-2 rounded-lg ${view === "list" ? "bg-primary text-primary-foreground" : "bg-accent"}`}
+            className={`p-2 rounded-lg transition-colors ${view === "list" ? "bg-primary text-primary-foreground" : "bg-accent hover:bg-accent/80"}`}
             aria-label="List view"
           >
             <List className="w-4 h-4" />
@@ -162,7 +167,7 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
         </div>
       ) : (
         <>
-          <div className={view === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
+          <div className={view === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6" : "space-y-4"}>
             {products.map((product: any) => (
               <ProductCard key={product.id} product={product} view={view} />
             ))}

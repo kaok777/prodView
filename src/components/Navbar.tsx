@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
-import { Search, Moon, Sun, Menu, LogOut } from "lucide-react";
+import { Search, Moon, Sun, X, LogOut } from "lucide-react";
 import { getAdminSession, clearAdminSession } from "../utils/security";
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const session = getAdminSession();
@@ -16,6 +17,7 @@ export function Navbar() {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+      setMobileSearchOpen(false);
     }
   };
 
@@ -25,52 +27,78 @@ export function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b h-16 flex items-center px-4">
-      <div className="container mx-auto flex items-center justify-between gap-4">
-        <Link to="/" className="text-2xl font-bold text-primary whitespace-nowrap">
+    <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b">
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
+        {/* Logo */}
+        <Link to="/" className="text-xl md:text-2xl font-bold text-primary whitespace-nowrap flex-shrink-0">
           ProdView
         </Link>
 
-        <form onSubmit={handleSearch} className="flex-1 max-w-2xl">
-          <div className="relative">
+        {/* Desktop Search */}
+        <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-2xl">
+          <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <input
               type="text"
               placeholder="Search products..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out"
             />
           </div>
         </form>
 
-      <div className="flex items-center gap-2 whitespace-nowrap">
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-lg hover:bg-accent"
-          aria-label="Toggle theme"
-        >
-          {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-        </button>
-        
-        {session && isAdminRoute ? (
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+          {/* Mobile Search Toggle */}
           <button
-            onClick={handleLogout}
-            className="px-3 py-1 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+            onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+            className="md:hidden p-2 rounded-lg hover:bg-accent transition-colors"
+            aria-label="Toggle search"
           >
-            <LogOut className="w-4 h-4" />
-            Logout
+            {mobileSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
           </button>
-        ) : (
-          <Link
-            to="/admin"
-            className="px-3 py-1 text-sm text-muted-foreground hover:text-foreground"
+
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg hover:bg-accent transition-colors"
+            aria-label="Toggle theme"
           >
-            Admin
-          </Link>
-        )}
+            {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+          </button>
+
+          {/* Logout (Admin only) */}
+          {session && isAdminRoute && (
+            <button
+              onClick={handleLogout}
+              className="hidden sm:flex px-3 py-1 text-sm text-muted-foreground hover:text-foreground items-center gap-1 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden lg:inline">Logout</span>
+            </button>
+          )}
+        </div>
       </div>
-      </div>
+
+      {/* Mobile Search Bar */}
+      {mobileSearchOpen && (
+        <div className="md:hidden border-t bg-background">
+          <form onSubmit={handleSearch} className="container mx-auto px-4 py-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out"
+                autoFocus
+              />
+            </div>
+          </form>
+        </div>
+      )}
     </nav>
   );
 }
