@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import { ProductCard } from "../components/ProductCard";
 import { ProductImage } from "../components/ProductImage";
+import { FilterTag } from "../components/FilterTag";
 import { SEOHead } from "../components/SEOHead";
 import { useAnalytics, useAffiliateTracking } from "../hooks/useAnalytics";
 import { generateProductStructuredData } from "../utils/seo";
@@ -191,7 +192,36 @@ export function ProductDetailPage() {
           <div className="space-y-6">
             <div>
               <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
-              <div className="max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+
+              {/* Category and Use Case Tags */}
+              {(product.categories?.length > 0 || product.useCases?.length > 0) && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {product.categories?.map((categoryItem: any) => {
+                    const category = categoryItem.category || categoryItem;
+                    return (
+                      <FilterTag
+                        key={category.id}
+                        label={category.name}
+                        filterType="category"
+                        filterId={category.id}
+                      />
+                    );
+                  })}
+                  {product.useCases?.map((useCaseItem: any) => {
+                    const useCase = useCaseItem.useCase || useCaseItem;
+                    return (
+                      <FilterTag
+                        key={useCase.id}
+                        label={useCase.name}
+                        filterType="useCase"
+                        filterId={useCase.id}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                 <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
                   {product.description}
                 </p>

@@ -26,7 +26,7 @@ export function HomePage() {
           </p>
           <Link
             to="/products"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg text-lg hover:bg-primary/90 transition-colors"
+            className="font-semibold inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg text-lg hover:bg-primary/90 transition-colors"
           >
             Browse Products <ArrowRight className="w-5 h-5" />
           </Link>
