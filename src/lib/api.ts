@@ -10,28 +10,61 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true,
+  withCredentials: true, // Enable sending cookies
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+// Track if we're currently refreshing the token to avoid multiple refresh calls
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+function subscribeTokenRefresh(cb: (token: string) => void) {
+  refreshSubscribers.push(cb);
+}
+
+function onTokenRefreshed(token: string) {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+}
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('adminSession');
-      if (window.location.pathname.startsWith('/admin') &&
-          window.location.pathname !== '/admin/login') {
-        window.location.href = '/admin/login';
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If 401 and not already retried
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // Wait for the refresh to complete
+        return new Promise((resolve) => {
+          subscribeTokenRefresh(() => {
+            resolve(api(originalRequest));
+          });
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // Try to refresh the token
+        await api.post('/auth/refresh');
+        isRefreshing = false;
+        onTokenRefreshed('refreshed');
+
+        // Retry the original request
+        return api(originalRequest);
+      } catch (refreshError) {
+        // Refresh failed, redirect to login
+        isRefreshing = false;
+        localStorage.removeItem('adminSession');
+        if (window.location.pathname.startsWith('/admin') &&
+            window.location.pathname !== '/admin/login') {
+          window.location.href = '/admin/login';
+        }
+        return Promise.reject(refreshError);
       }
     }
+
     return Promise.reject(error);
   }
 );

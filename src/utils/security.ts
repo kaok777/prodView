@@ -51,7 +51,7 @@ export function getAdminSession(): AdminSession | null {
 
 export function clearAdminSession(): void {
   localStorage.removeItem("adminSession");
-  localStorage.removeItem("accessToken");
+  // Note: Actual logout should call /auth/logout to clear httpOnly cookies
 }
 
 export function setAdminSession(session: AdminSession): void {

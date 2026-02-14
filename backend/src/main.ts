@@ -6,14 +6,22 @@ import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
+import { validateEnvironment } from './config/env.validation';
 
 async function bootstrap() {
+  // Validate environment variables before starting
+  validateEnvironment();
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   const configService = app.get(ConfigService);
   const corsOrigin = configService.get<string>('CORS_ORIGIN', 'http://localhost:5173');
   const nodeEnv = configService.get<string>('NODE_ENV', 'development');
   const isProduction = nodeEnv === 'production';
+
+  // Enable cookie parser for httpOnly cookies
+  app.use(cookieParser());
 
   app.use(helmet({
     contentSecurityPolicy: {

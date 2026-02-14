@@ -93,42 +93,42 @@ export class AuthService {
     );
 
     const payload = { sub: admin.id, email: admin.email, role: admin.role };
-    const accessToken = this.jwtService.sign(payload);
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
     return {
+      accessToken,
+      refreshToken,
       adminId: admin.id,
       email: admin.email,
       role: admin.role,
-      accessToken,
     };
   }
 
-  async setupFirstAdmin(): Promise<any> {
-    const existingAdmins = await this.prisma.adminUser.count();
+  async refreshAccessToken(refreshToken: string) {
+    try {
+      const payload = this.jwtService.verify(refreshToken);
 
-    if (existingAdmins > 0) {
-      throw new UnauthorizedException('Admin users already exist.');
+      // Verify admin still exists and is active
+      const admin = await this.prisma.adminUser.findUnique({
+        where: { id: payload.sub },
+      });
+
+      if (!admin) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const newPayload = { sub: admin.id, email: admin.email, role: admin.role };
+      const newAccessToken = this.jwtService.sign(newPayload, { expiresIn: '15m' });
+      const newRefreshToken = this.jwtService.sign(newPayload, { expiresIn: '7d' });
+
+      return {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+      };
+    } catch (error) {
+      throw new UnauthorizedException('Invalid refresh token');
     }
-
-    const defaultEmail = 'vibrationconnect@gmail.com';
-    const defaultPassword = 'Cxserfd345!';
-    const saltRounds = 12;
-    const passwordHash = await bcrypt.hash(defaultPassword, saltRounds);
-
-    const admin = await this.prisma.adminUser.create({
-      data: {
-        email: defaultEmail,
-        passwordHash,
-        role: 'admin',
-      },
-    });
-
-    return {
-      adminId: admin.id,
-      email: defaultEmail,
-      password: defaultPassword,
-      message: 'First admin created successfully.',
-    };
   }
 
   async createAdmin(email: string, password: string): Promise<string> {

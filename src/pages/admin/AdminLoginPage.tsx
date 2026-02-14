@@ -10,7 +10,6 @@ export function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [setupLoading, setSetupLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -20,9 +19,9 @@ export function AdminLoginPage() {
 
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { accessToken, ...userData } = response.data;
+      const userData = response.data;
 
-      localStorage.setItem('accessToken', accessToken);
+      // Store only non-sensitive session data for UI purposes
       setAdminSession(userData);
 
       toast.success("Login successful");
@@ -31,20 +30,6 @@ export function AdminLoginPage() {
       toast.error(error.response?.data?.message || "Invalid credentials");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleSetup = async () => {
-    setSetupLoading(true);
-    try {
-      const response = await api.post('/auth/setup-first-admin');
-      toast.success("Admin user created successfully!");
-      setEmail(response.data.email);
-      setPassword(response.data.password);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Setup failed");
-    } finally {
-      setSetupLoading(false);
     }
   };
 
@@ -107,25 +92,10 @@ export function AdminLoginPage() {
           </button>
         </form>
 
-        <div className="space-y-4">
-          <div className="text-center">
-            <button className="text-sm text-primary hover:underline">
-              Forgot your password?
-            </button>
-          </div>
-          
-          <div className="border-t pt-4">
-            <p className="text-sm text-muted-foreground text-center mb-3">
-              First time setup? Create admin account:
-            </p>
-            <button
-              onClick={handleSetup}
-              disabled={setupLoading}
-              className="w-full px-4 py-2 bg-secondary text-secondary-foreground rounded-lg font-medium hover:bg-secondary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {setupLoading ? "Creating Admin..." : "Setup Admin Account"}
-            </button>
-          </div>
+        <div className="text-center">
+          <button className="text-sm text-primary hover:underline">
+            Forgot your password?
+          </button>
         </div>
       </div>
     </div>
