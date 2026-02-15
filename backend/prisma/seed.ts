@@ -6,30 +6,6 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Starting database seed...');
 
-  const existingAdmin = await prisma.adminUser.findFirst();
-  if (existingAdmin) {
-    console.log('Admin user already exists. Skipping seed.');
-    return;
-  }
-
-  const defaultEmail = 'xxxxxxxxxxxxxxxx';
-  const defaultPassword = 'xxxxxxxxxxxxxxx';
-  const saltRounds = 12;
-  const passwordHash = await bcrypt.hash(defaultPassword, saltRounds);
-
-  const admin = await prisma.adminUser.create({
-    data: {
-      email: defaultEmail,
-      passwordHash,
-      role: 'admin',
-    },
-  });
-
-  console.log('Created default admin user:');
-  console.log(`Email: ${defaultEmail}`);
-  console.log(`Password: ${defaultPassword}`);
-  console.log(`Admin ID: ${admin.id}`);
-
   const categories = await Promise.all([
     prisma.category.create({
       data: { name: 'Electronics' },
