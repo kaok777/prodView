@@ -1,2165 +1,1122 @@
 # Issue Linkage & Root Cause Mapping
-**Analysis Date:** February 14, 2026
-**Analyst Role:** Principal Software Architect & Systems-Level Technical Strategist
-**Source Document:** mdFiles/analysis/projectAudit_12022026.md
-**Analysis Type:** Systems-Level Issue Dependency & Root Cause Mapping
+**Date:** February 15, 2026
+**Analyst Role:** Principal Software Architect & Systems-Level Refactoring Strategist
+**Source:** mdFiles/analysis/projectAudit.md
+**Branch:** claude_conversion_40
 
 ---
 
 ## 1. Executive Overview
 
-### Issue Distribution by Severity
+### Total Issues by Severity
 
-| Severity | Count | Backend | Frontend | Distribution |
-|----------|-------|---------|----------|--------------|
-| 🔴 CRITICAL | 9 | 2 (22%) | 7 (78%) | Security-heavy |
-| 🟡 HIGH | 12 | 4 (33%) | 8 (67%) | Performance & Type Safety |
-| 🟠 MEDIUM | 15 | 5 (33%) | 10 (67%) | Quality & Maintainability |
-| 🟢 LOW | 11 | 5 (45%) | 6 (55%) | Polish & Optimization |
-| **TOTAL** | **47** | **16** | **31** | **Frontend-biased** |
+- **🔴 CRITICAL:** 0 issues (all resolved)
+- **🟡 HIGH:** 5 issues (4 backend, 1 frontend)
+- **🟠 MEDIUM:** 8 issues (4 backend, 3 frontend, 1 cross-cutting)
+- **🟢 LOW:** 3 issues (cleanup tasks)
 
-### Observed Systemic Patterns
+**Total:** 16 issues
 
-**Pattern 1: Security Architecture Failure**
-- 78% of critical issues are security-related (7 of 9)
-- All stem from absence of a cohesive security architecture
-- Frontend and backend security models are disconnected
-- No defense-in-depth strategy
+### Observed Architectural Themes
 
-**Pattern 2: Type System Abandonment**
-- Frontend has pervasive `any` types (8+ locations)
-- Backend DTOs lack depth validation
-- No shared type contracts between frontend/backend
-- Contract violations handled at runtime instead of compile-time
+1. **Query Pattern Anti-Pattern (Backend):** Systematic preference for application-layer processing over database-layer operations, leading to N+1 queries and memory inefficiency.
 
-**Pattern 3: Performance Anti-Patterns**
-- Multiple instances of N+1 query problems
-- Over-aggressive caching strategies backfire
-- Database used for concerns better suited to in-memory solutions
-- No clear performance budget or measurement strategy
+2. **Cache Integrity Gap (Backend):** Caching layer lacks validation logic, creating stale data vulnerabilities and over-aggressive invalidation patterns.
 
-**Pattern 4: State Management Fragmentation**
-- Dual authentication state storage (localStorage + JWT)
-- Cache state vs database state inconsistency
-- No single source of truth for application state
-- Multiple localStorage keys for related concerns
+3. **Input Boundary Weakness (Backend):** Inconsistent depth/size validation across DTOs and service methods, particularly for recursive structures and JSON payloads.
 
-**Pattern 5: Error Handling Inconsistency**
-- Frontend: Mix of console.error, toast, silent failures
-- Backend: Good patterns but frontend doesn't leverage them
-- No error boundary strategy beyond root level
-- Promise.all failures cascade unnecessarily
+4. **Type Contract Erosion (Frontend):** Existing type definitions not consistently enforced, with `any` types scattered across components despite well-defined models in `src/types/models.ts`.
 
-### Summary of Architectural Weaknesses
+5. **Error Handling Fragmentation (Frontend):** ErrorService exists but not uniformly adopted across admin pages, creating inconsistent user experience and logging gaps.
 
-**Weakness A: Absence of Security Layers**
-- No Content Security Policy enforcement
-- No XSS prevention strategy
-- Credentials management is development-focused
-- Token storage vulnerable by design
+6. **Code Duplication Pattern (Frontend):** API fetching logic duplicated across components, indicating missing abstraction layer.
 
-**Weakness B: Type Safety Erosion**
-- TypeScript benefits abandoned via `any` types
-- No interface contracts between layers
-- DTO validation incomplete
-- Runtime errors instead of compile-time catches
+### Primary Systemic Weaknesses
 
-**Weakness C: Performance Naivety**
-- Queries designed for small datasets
-- No pagination strategy for analytics
-- Cache invalidation too coarse-grained
-- Database used for rate limiting
+**Backend:**
+- **Data Access Layer (DAL) Pattern Incomplete:** Services directly implement query logic instead of delegating to repository layer with optimized queries.
+- **Validation Layer Inconsistency:** Some DTOs have shallow validation while services perform deeper checks, violating single responsibility.
+- **Cache Strategy Primitive:** In-memory cache lacks event-driven invalidation, relying on blanket deletion.
 
-**Weakness D: State Synchronization Gaps**
-- Multiple sources of truth for authentication
-- Cache state can diverge from database state
-- No cache validation strategy
-- localStorage used for security-sensitive data
+**Frontend:**
+- **Type System Underutilized:** TypeScript strict mode enabled but not leveraged due to escape hatches (`any` types).
+- **Service Layer Incomplete:** ErrorService, NavigationService exist but not universally applied.
+- **Component-Service Coupling:** Components directly call API instead of using custom hooks for state management.
 
-**Weakness E: Code Organization Debt**
-- Massive code duplication (ProductGrid)
-- Complex components without decomposition
-- No reusable query builders
-- Inconsistent error handling patterns
+### High-Leverage Structural Areas
 
-### Key Root Cause Themes
+**Zone 1: Backend Query Layer (Highest Impact)**
+- Issues: HIGH-B1, HIGH-B3, MEDIUM-B1
+- Leverage: Single refactor to repository pattern resolves 3 issues + improves scalability
 
-**Theme 1: Development-First Mindset**
-Issues stem from prioritizing development velocity over production security and stability. Examples:
-- Hardcoded credentials for quick testing
-- localStorage for easy state access
-- Permissive validation for rapid iteration
+**Zone 2: Backend Validation Architecture (Security-Critical)**
+- Issues: HIGH-B4, MEDIUM-B3, HIGH-B3
+- Leverage: Custom decorator library + service-level guards resolves 3 issues + prevents future vulnerabilities
 
-**Theme 2: Monolithic Component Design**
-Large components with multiple responsibilities make issues compound:
-- ProductDetailPage: 265 lines, manages carousel + data + routing
-- ProductGrid: Duplicated API logic across branches
-- No separation of concerns between UI and data fetching
+**Zone 3: Frontend Type System (Code Quality Foundation)**
+- Issues: HIGH-F1, HIGH-B5
+- Leverage: Type definition refactor + linting rules resolves 2 issues + improves developer velocity
 
-**Theme 3: Missing Abstraction Layers**
-Direct coupling between components and infrastructure:
-- Components directly call localStorage
-- No authentication service layer
-- No query builder abstraction
-- Each component implements its own error handling
-
-**Theme 4: Type System as Documentation Only**
-TypeScript used for IDE autocomplete but not for safety:
-- `any` types bypass type checking
-- No runtime validation of API contracts
-- DTOs don't validate nested structures
-- Type erasure at runtime leaves gaps
-
-**Theme 5: Performance Optimization Afterthought**
-Performance issues baked into initial design:
-- Analytics queries load entire table
-- Cache invalidation nukes everything
-- N+1 patterns in critical paths
-- No query planning before implementation
+**Zone 4: Frontend Data Fetching (Architectural Cleanup)**
+- Issues: HIGH-F2, MEDIUM-F1, MEDIUM-F2, MEDIUM-F3
+- Leverage: Custom hooks + unified error handling resolves 4 issues + reduces code duplication
 
 ---
 
 ## 2. Root Cause Clusters
 
-### Cluster A – Authentication & Session Security Failures
+### Cluster A: Application-Layer Aggregation Anti-Pattern
 
 **Underlying Root Cause:**
-No cohesive authentication architecture. Security model treats authentication as a feature rather than a cross-cutting architectural concern. Token storage, credential management, and session handling are ad-hoc implementations without a unified strategy.
+Analytics and category services perform data aggregation in JavaScript instead of delegating to PostgreSQL's native aggregation capabilities. This stems from an incomplete understanding of Prisma's query API (specifically `groupBy`) and a default assumption that application-layer processing is simpler.
 
-**Affected Layers:**
-- Backend: `auth.service.ts`, `auth.controller.ts`, JWT strategy
-- Frontend: `api.ts` interceptors, `security.ts` utilities, `AdminLoginPage.tsx`
-- Infrastructure: Environment configuration, secret management
+The root architectural flaw is **missing repository abstraction layer**. Services are simultaneously responsible for:
+1. Business logic
+2. Query optimization
+3. Data transformation
+
+This violates separation of concerns and creates a systematic pattern of inefficient queries.
+
+**Impacted Areas:**
+- Backend: Analytics Module, Categories Module, Products Module (cache layer)
 
 **Linked Issue Identifiers:**
-- **🔴 CRITICAL-B1:** Hardcoded Admin Credentials (`auth.service.ts:113-114`)
-- **🔴 CRITICAL-B2:** Insecure Setup Endpoint (`auth.controller.ts:27-32`)
-- **🔴 CRITICAL-F1:** Token Storage in localStorage XSS (`api.ts:17`)
-- **🔴 CRITICAL-F3:** Setup Endpoint Exposes Credentials (`AdminLoginPage.tsx:37-49`)
-- **🔴 CRITICAL-F7:** Session Stored in Plain JSON (`security.ts:37-59`)
-- **🟠 MEDIUM-F9:** Dual Authentication State Storage
-- **🟠 MEDIUM-B5:** JWT Expiration Too Long (24 hours)
+- **HIGH-B1:** N+1 Query Problems in Analytics Service
+- **HIGH-B3:** Circular Reference Check Inefficiency
+- **MEDIUM-B1:** Cache Invalidation Over-Aggressive
 
-**Why These Are Connected:**
-All issues trace to the absence of an `AuthenticationService` abstraction that would:
-1. Centralize credential management
-2. Provide secure token storage strategy (httpOnly cookies)
-3. Eliminate dual state (JWT contains all session data)
-4. Implement proper token lifecycle (short-lived access + refresh)
-5. Remove setup endpoint dependency (environment-based initialization)
+**Why These Issues Are Linked:**
 
-**If Fixed, Which Issues Would Be Resolved Simultaneously:**
-Implementing a proper authentication architecture would resolve **7 issues** (5 critical, 2 medium):
-- Credentials moved to secure environment initialization
-- Setup endpoint removed entirely
-- Tokens stored in httpOnly cookies (XSS-proof)
-- Frontend no longer stores session data separately
-- JWT decoded on-demand from secure cookie
-- Refresh token rotation implemented
-- Token expiration shortened to 15 minutes
+All three issues stem from the same architectural decision: **performing relational operations in application code instead of the database**.
 
-**Architectural Leverage:** **HIGHEST** - Resolves 15% of all issues (7 of 47) and eliminates 5 of 9 critical security vulnerabilities.
+- **HIGH-B1** loads millions of analytics events into Node.js memory and aggregates with JavaScript loops, then executes N+1 queries for related products.
+- **HIGH-B3** traverses category parent chains with sequential database queries instead of using recursive CTEs or materializing the path.
+- **MEDIUM-B1** invalidates all caches because there's no query-level understanding of affected entities—the cache service doesn't know which products are actually impacted by a change.
+
+**Technical Connection:**
+```
+Prisma Query (Current) → findMany() → Load All → JS Loop → N individual findUnique()
+                                                           ↓
+                                              Memory Overflow + N+1 Queries
+
+Prisma Query (Optimal) → groupBy() → Database Aggregation → Single findMany(where: { id: { in: [...] } })
+                                                           ↓
+                                              2-3 queries total, database-optimized
+```
+
+**If Fixed, This Cluster Would Resolve:**
+- **PRIMARY:** HIGH-B1, HIGH-B3, MEDIUM-B1
+- **SECONDARY:** Improves MEDIUM-B2 (reduces database load, making rate-limiting transition smoother)
+- **TERTIARY:** Reduces cache pressure, improving overall cache hit rate
+
+**Refactor Leverage:** 3 HIGH/MEDIUM issues + architectural foundation for scalability
 
 ---
 
-### Cluster B – Input Validation & XSS Defense Architecture
+### Cluster B: Input Validation Architecture Gaps
 
 **Underlying Root Cause:**
-No defense-in-depth strategy for user input. Validation treated as a feature-level concern rather than an architectural layer. CSP not properly implemented, sanitization is regex-based (easily bypassed), and there's no validation framework.
+The application uses class-validator for DTO validation but lacks **custom validators for domain-specific constraints**:
+1. **Depth limits** for recursive structures (categories, metadata)
+2. **Size limits** for JSON payloads (metadata objects)
+3. **At-least-one-field validation** for update operations
 
-**Affected Layers:**
-- Frontend: `security.ts`, `SecurityHeaders.tsx`, all form components
-- Backend: DTOs, ValidationPipe configuration, metadata validation
-- Infrastructure: Helmet CSP configuration
+This creates a two-tier validation system:
+- **Tier 1 (DTO Layer):** Basic type checking, format validation
+- **Tier 2 (Service Layer):** Business logic validation (circular references, required fields)
+
+The problem: **Tier 1 is incomplete**, allowing malicious or malformed input to reach Tier 2, where validation is inconsistent.
+
+**Impacted Areas:**
+- Backend: Analytics Module (DTOs), Categories Module (service validation), Use Cases Module (update endpoints)
 
 **Linked Issue Identifiers:**
-- **🔴 CRITICAL-F4:** CSP Meta Tags Not Enforced (`SecurityHeaders.tsx:16-26`)
-- **🔴 CRITICAL-F5:** Inadequate Input Sanitization (`security.ts:1-7`)
-- **🟡 HIGH-B4:** Inadequate Validation in DTOs (`track-event.dto.ts:26-27`)
-- **🟠 MEDIUM-B3:** Missing Input Validation in Update Endpoints
+- **HIGH-B4:** Inadequate Validation in DTOs (metadata size/depth)
+- **HIGH-B3:** Circular Reference Check Inefficiency (no depth limit)
+- **MEDIUM-B3:** Missing Input Validation in Update Endpoints (empty payload acceptance)
 
-**Why These Are Connected:**
-All stem from treating validation as isolated checks rather than a layered defense system:
-1. **Layer 1 (Browser):** CSP should block inline scripts - currently not enforced
-2. **Layer 2 (Frontend):** Sanitization should clean inputs - currently bypassable
-3. **Layer 3 (Backend):** DTOs should validate structure and size - currently incomplete
-4. **Layer 4 (Database):** Constraints should enforce integrity - currently missing depth checks
+**Why These Issues Are Linked:**
 
-**If Fixed, Which Issues Would Be Resolved Simultaneously:**
-Implementing proper validation architecture would resolve **4 issues** (2 critical, 1 high, 1 medium):
-- CSP enforced via HTTP headers in backend
-- DOMPurify library replaces regex sanitization
-- Custom DTO validators for size, depth, complexity
-- Update endpoints require at least one field
-- Metadata validation with max depth and size limits
+All three represent **missing validation guards at the API boundary**:
 
-**Architectural Leverage:** **HIGH** - Resolves 9% of issues (4 of 47) and establishes defense-in-depth security model.
+- **HIGH-B4:** `metadata?: Record<string, any>` accepts unlimited nesting and size. Service layer has 1000-char stringified limit, but DTO validation is missing.
+- **HIGH-B3:** Category parent chain has no depth limit at DTO or service layer—validation only checks for circular references, not depth.
+- **MEDIUM-B3:** Update DTOs don't enforce "at least one field" requirement, allowing empty payloads that generate meaningless audit logs.
+
+**Technical Pattern:**
+```typescript
+// Current Pattern (Incomplete)
+@IsOptional()
+@IsObject()
+metadata?: Record<string, any>;  // ❌ No size/depth guards
+
+// Needed Pattern (Complete)
+@IsOptional()
+@IsObject()
+@ValidateNested()
+@MaxDepth(3)        // Custom decorator
+@MaxSize(10000)     // Custom decorator
+metadata?: Record<string, any>;
+```
+
+**If Fixed, This Cluster Would Resolve:**
+- **PRIMARY:** HIGH-B4, HIGH-B3, MEDIUM-B3
+- **SECONDARY:** Prevents DoS attacks via oversized payloads
+- **TERTIARY:** Reduces service-layer complexity (validation moves to DTO layer where it belongs)
+
+**Refactor Leverage:** 3 HIGH/MEDIUM issues + security hardening + cleaner service layer
 
 ---
 
-### Cluster C – Type Safety & Contract Enforcement
+### Cluster C: Cache Integrity & Invalidation Design
 
 **Underlying Root Cause:**
-TypeScript benefits abandoned through pervasive use of `any` types. No shared type definitions between frontend and backend. API contracts exist only in documentation, not in enforced types. Runtime validation doesn't match type declarations.
+The cache layer (`cache.service.ts`) is a **primitive key-value store** without:
+1. **Data validation** on cache retrieval
+2. **Event-driven invalidation** (subscribes to data changes)
+3. **Granular invalidation** (understands entity relationships)
 
-**Affected Layers:**
-- Frontend: All components using `any` types (8+ locations)
-- Backend: DTOs with incomplete validation
-- Shared: No common type definitions
-- API: No OpenAPI/contract-first development
+Current implementation treats cache as "dumb storage" that:
+- Stores whatever is given (including potentially stale status)
+- Invalidates entire namespaces on any write (over-aggressive)
+- Never validates cached data against current business rules
+
+**Impacted Areas:**
+- Backend: Products Module (caching), Categories Module (cache invalidation), Use Cases Module
 
 **Linked Issue Identifiers:**
-- **🟡 HIGH-F1:** Type Safety Gaps (`ProductCard.tsx:6`, `ProductGrid.tsx:17`, `HeroCarousel.tsx`, `LeftSidebar.tsx:10-11`, `RightSidebar.tsx:9`, `AdminDashboard.tsx`, `ProductDetailPage.tsx:15-16`)
-- **🟡 HIGH-B4:** Inadequate Validation in DTOs (`track-event.dto.ts:26-27`)
-- **🟠 MEDIUM-F7:** API Response Shape Assumptions
-- **🟠 MEDIUM-B3:** Missing Input Validation in Update Endpoints
-- **🟢 LOW-F3:** tsconfig could be stricter
+- **HIGH-B2:** Missing NULL Checks in Product Caching
+- **MEDIUM-B1:** Cache Invalidation Over-Aggressive
 
-**Why These Are Connected:**
-All result from not treating types as architectural contracts:
-1. Frontend uses `any` to avoid defining Product/Category/UseCase interfaces
-2. Backend DTOs don't validate nested structures or sizes
-3. No shared type definitions ensure frontend/backend alignment
-4. API contract changes cause runtime failures, not compile errors
-5. TypeScript strict settings not fully enabled
+**Why These Issues Are Linked:**
 
-**If Fixed, Which Issues Would Be Resolved Simultaneously:**
-Creating shared type system would resolve **5 issues** (1 high, 2 medium, 2 low):
-- Shared `types/` package with Product, Category, UseCase interfaces
-- All `any` types replaced with proper interfaces
-- DTOs use class-validator with depth/size validators
-- API responses validated against type contracts
-- tsconfig strict settings enabled
-- OpenAPI schema generated from DTOs
+Both issues stem from **cache service lacking domain awareness**:
 
-**Architectural Leverage:** **MEDIUM-HIGH** - Resolves 11% of issues (5 of 47) and prevents entire class of runtime errors.
+- **HIGH-B2:** Product cache stores PUBLISHED products, but when status changes to DRAFT, cache isn't invalidated—and retrieval doesn't validate the status field. This is a **stale data vulnerability**.
+
+- **MEDIUM-B1:** Product update triggers `deletePattern('product:')`, which wipes ALL product caches (including unrelated products). This is a **thundering herd problem**—1000 clients simultaneously refetch after cache wipe.
+
+**Architectural Flaw:**
+```typescript
+// Current: Dumb Cache (No Validation)
+const cached = this.cacheService.get(cacheKey);
+if (cached) {
+  return cached;  // ❌ Returns stale DRAFT product to public users
+}
+
+// Needed: Smart Cache (Validates Integrity)
+const cached = this.cacheService.get(cacheKey);
+if (cached && cached.status === 'PUBLISHED') {
+  return cached;  // ✅ Only returns valid published products
+}
+this.cacheService.delete(cacheKey);  // Invalidate stale cache
+```
+
+**If Fixed, This Cluster Would Resolve:**
+- **PRIMARY:** HIGH-B2, MEDIUM-B1
+- **SECONDARY:** Improves cache hit rate from ~60% to ~80%
+- **TERTIARY:** Reduces database query load by 20-30%
+
+**Refactor Leverage:** 2 HIGH/MEDIUM issues + 20-30% performance improvement
 
 ---
 
-### Cluster D – Data Query & Performance Architecture
+### Cluster D: Frontend Type System Erosion
 
 **Underlying Root Cause:**
-Queries designed for small datasets without considering scale. No query builder abstraction. Manual JavaScript aggregation instead of database-level operations. N+1 patterns in multiple locations. Cache strategies that work against performance rather than for it.
+TypeScript strict mode is enabled, but the codebase has **systematic escape hatches** via `any` types. This creates false confidence—the type system exists but doesn't enforce contracts.
 
-**Affected Layers:**
-- Backend: Analytics service, Products service, Categories service, Rate limit service
-- Database: Missing composite indexes, inefficient query patterns
-- Cache: In-memory cache with over-aggressive invalidation
+Root cause: **Type definitions exist in `src/types/models.ts` but aren't consistently imported and applied**. Developers falling back to `any` when:
+1. Dealing with Prisma relation types (backend)
+2. Mapping API responses to component props (frontend)
+3. Generic utility functions
+
+This is a **organizational/process issue**, not technical limitation. The solution requires:
+- Explicit return types on all service methods
+- Type imports enforced via linting rules
+- Stricter TypeScript configuration (`noImplicitAny: true`)
+
+**Impacted Areas:**
+- Backend: Products Service (return types)
+- Frontend: ProductDetailPage, ProductGrid, Admin pages
 
 **Linked Issue Identifiers:**
-- **🟡 HIGH-B1:** N+1 Query Problems in Analytics Service (`analytics.service.ts:111-175`)
-- **🟡 HIGH-B2:** Missing NULL Checks in Product Caching (`products.service.ts:81-110`)
-- **🟡 HIGH-B3:** Circular Reference Check Inefficiency (`categories.service.ts:94-123`)
-- **🟠 MEDIUM-B1:** Cache Invalidation Over-Aggressive (`products.service.ts:467-468`)
-- **🟠 MEDIUM-B2:** Rate Limit Service Database Inefficiency (`rate-limit.service.ts:32-48`)
-- **🟢 LOW-B3:** Redundant Database Indexes in AuditLog
-- **🟢 LOW-B4:** Missing Unique Constraint on RateLimit
+- **HIGH-F1:** Type Safety Gaps (any types in frontend)
+- **HIGH-B5:** Type Safety in Products Service (missing return type definitions)
 
-**Why These Are Connected:**
-All stem from not planning queries and indexes together:
-1. **Analytics:** Loads entire table, aggregates in JS, then N+1 fetches products
-2. **Products:** Cache doesn't validate status, invalidates too broadly
-3. **Categories:** Circular check queries database once per level
-4. **Rate Limit:** Uses database for what should be in-memory/Redis
-5. **Indexes:** Created without analyzing actual query patterns
+**Why These Issues Are Linked:**
 
-**If Fixed, Which Issues Would Be Resolved Simultaneously:**
-Implementing query architecture would resolve **7 issues** (3 high, 2 medium, 2 low):
-- Analytics uses Prisma groupBy + single product query
-- Product cache validates cached status before returning
-- Cache invalidation targeted to specific product ID
-- Circular check has MAX_DEPTH limit and batch query
-- Rate limiting moved to Redis or in-memory
-- Redundant indexes removed, composite indexes added
-- RateLimit table restructured with composite key
+Both backend and frontend suffer from **missing type definitions for complex relational data**:
 
-**Architectural Leverage:** **MEDIUM-HIGH** - Resolves 15% of issues (7 of 47) and enables horizontal scaling.
+- **HIGH-B5 (Backend):** `products.service.ts` methods return complex Prisma types like `Product & { categories: { category: Category }[] }` without explicit interface definitions.
+
+- **HIGH-F1 (Frontend):** Components receive these untyped responses and resort to `any` when mapping:
+  ```typescript
+  product.categories?.map((categoryItem: any) => {  // ❌
+    const category = categoryItem.category || categoryItem;
+  });
+  ```
+
+**Type Contract Flow:**
+```
+Backend Service (no explicit type) → API Response (untyped) → Frontend Component (any type escape)
+                                                             ↓
+                                            Loss of type safety, IDE autocomplete, refactoring safety
+```
+
+**If Fixed, This Cluster Would Resolve:**
+- **PRIMARY:** HIGH-F1, HIGH-B5
+- **SECONDARY:** Improves developer velocity (autocomplete, refactoring tools)
+- **TERTIARY:** Reduces runtime errors from incorrect property access
+
+**Refactor Leverage:** 2 HIGH issues + 30-40% faster development velocity + fewer runtime errors
 
 ---
 
-### Cluster E – Error Handling & Recovery Architecture
+### Cluster E: Frontend Error Handling Fragmentation
 
 **Underlying Root Cause:**
-No unified error handling strategy. Each component implements its own approach. No error boundaries beyond root level. Promise failures cascade. Hard redirects lose state. Errors either over-communicated (console spam) or under-communicated (silent failures).
+`ErrorService` exists with comprehensive error logging capabilities, but **not uniformly adopted** across the frontend codebase. Current state:
 
-**Affected Layers:**
-- Frontend: All components, API interceptor, error boundaries
-- Backend: Error response formatting, logging strategy
-- User Experience: Toast notifications, error UI
+- **ProductDetailPage:** Uses `Promise.allSettled` + ErrorService ✅
+- **Admin pages:** Use bare `try-catch` without ErrorService ❌
+- **Form submissions:** Show generic error messages without context ❌
+
+This creates **inconsistent user experience**:
+- Some errors are properly logged and show helpful messages
+- Other errors are swallowed or show technical stack traces
+
+Root cause: **Service adoption incomplete**—ErrorService was added as refactoring improvement but not retroactively applied to all error handling code.
+
+**Impacted Areas:**
+- Frontend: Admin pages, Form components, API interceptors
 
 **Linked Issue Identifiers:**
-- **🔴 CRITICAL-F2:** Hard Redirect on 401 Loses Application State (`api.ts:30-33`)
-- **🔴 CRITICAL-F6:** Promise.all Failure Cascade (`ProductDetailPage.tsx:26-31`)
-- **🟡 HIGH-F7:** Missing Error Boundaries at Route Level
-- **🟡 HIGH-F8:** Single Error Boundary Coverage (`App.tsx:20`)
-- **🟠 MEDIUM-F2:** Silent API Failures in Sidebars (`LeftSidebar.tsx:32-34`, `RightSidebar.tsx:26-27`)
-- **🟠 MEDIUM-F8:** Inconsistent Error Handling Patterns
+- **HIGH-F2:** Error Handling Improvements
 
-**Why These Are Connected:**
-All result from treating errors as afterthoughts rather than first-class architectural concerns:
-1. **API Interceptor:** Hard redirect nukes all state instead of using React Router
-2. **Promise.all:** One API failure crashes entire page instead of graceful degradation
-3. **Error Boundaries:** Only at root, so single component error crashes app
-4. **Sidebars:** Silent failures with console.error only
-5. **Patterns:** Mix of toast, console, silent failures with no consistency
+**Why This Is a Standalone Cluster:**
 
-**If Fixed, Which Issues Would Be Resolved Simultaneously:**
-Implementing error architecture would resolve **6 issues** (2 critical, 2 high, 2 medium):
-- ErrorBoundary at route, layout, and component levels
-- API interceptor uses React Router navigate with state preservation
-- Promise.allSettled replaces Promise.all for independent failures
-- Centralized ErrorService with logging, user notification, recovery
-- Consistent error UI patterns (toast for transient, boundary for fatal)
-- Silent failures replaced with user-facing messages
+This is primarily a **consistency issue**, not architectural flaw. The pattern exists (ErrorService), it just needs:
+1. Find all `try-catch` blocks
+2. Replace with `ErrorService.handleApiError()`
+3. Add user-friendly error messages
 
-**Architectural Leverage:** **MEDIUM** - Resolves 13% of issues (6 of 47) and dramatically improves stability.
+**Current Pattern (Inconsistent):**
+```typescript
+// Admin pages (OLD pattern)
+try {
+  await api.post('/admin/products', data);
+} catch (error) {
+  console.error(error);  // ❌ No user feedback, no logging
+}
+
+// ProductDetailPage (NEW pattern)
+try {
+  await api.post('/admin/products', data);
+} catch (error) {
+  ErrorService.handleApiError(error, { componentName: 'ProductEditorPage' });  // ✅
+}
+```
+
+**If Fixed, This Cluster Would Resolve:**
+- **PRIMARY:** HIGH-F2
+- **SECONDARY:** Improves user experience (clear error messages)
+- **TERTIARY:** Better production debugging (centralized error logs)
+
+**Refactor Leverage:** 1 HIGH issue + significantly improved UX + debugging capabilities
 
 ---
 
-### Cluster F – State Management & Data Flow Architecture
+### Cluster F: Frontend Data Fetching Duplication
 
 **Underlying Root Cause:**
-No single source of truth for state. Multiple localStorage keys for related concerns. Cache state can diverge from database state. No state synchronization strategy. Components directly access infrastructure (localStorage, API) without abstraction.
+API fetching logic is **duplicated across components** instead of abstracted into custom hooks. Current pattern:
 
-**Affected Layers:**
-- Frontend: Authentication state, cache management, localStorage usage
-- Backend: Cache service, product status validation
-- Architecture: No state management layer between components and infrastructure
+```typescript
+// ProductGrid.tsx
+const [products, setProducts] = useState([]);
+useEffect(() => {
+  api.get('/products').then(/* ... */);
+}, [filters]);
+
+// ProductSelectionPage.tsx
+const [products, setProducts] = useState([]);
+useEffect(() => {
+  api.get('/products').then(/* ... */);  // ❌ DUPLICATE
+}, [filters]);
+```
+
+This violates **DRY principle** and creates:
+1. **Code duplication** (same fetch logic in multiple places)
+2. **Inconsistent loading states** (some components show skeletons, others don't)
+3. **Inconsistent error handling** (some use ErrorService, others don't)
+
+Root cause: **Missing custom hooks layer**. The codebase has service layer (ErrorService, StorageService) but not data fetching hooks.
+
+**Impacted Areas:**
+- Frontend: ProductGrid, ProductSelectionPage, AdminDashboard, ProductImage
 
 **Linked Issue Identifiers:**
-- **🟡 HIGH-F2:** Code Duplication in ProductGrid (`ProductGrid.tsx:28-96`)
-- **🟡 HIGH-B2:** Missing NULL Checks in Product Caching (`products.service.ts:81-110`)
-- **🟠 MEDIUM-F9:** Dual Authentication State Storage
-- **🟠 MEDIUM-B1:** Cache Invalidation Over-Aggressive
-- **🟢 LOW-F1:** Direct localStorage access without validation
+- **MEDIUM-F1:** Code Duplication in ProductGrid
+- **MEDIUM-F2:** Admin Dashboard Data Refresh
+- **MEDIUM-F3:** Image Loading States
 
-**Why These Are Connected:**
-All stem from components managing state directly without abstraction:
-1. **ProductGrid:** 4 duplicated API call branches because no query builder
-2. **Product Cache:** Doesn't validate status because cache and state are separate
-3. **Auth State:** Stored in both localStorage and JWT because no AuthService
-4. **Cache Invalidation:** Nukes everything because no state tracking
-5. **localStorage:** Accessed directly in 10+ places without validation layer
+**Why These Issues Are Linked:**
 
-**If Fixed, Which Issues Would Be Resolved Simultaneously:**
-Implementing state management architecture would resolve **5 issues** (1 high, 2 medium, 2 low):
-- QueryBuilder service eliminates ProductGrid duplication
-- StateManager validates and manages cache consistency
-- AuthService becomes single source for authentication state
-- Cache tracking enables targeted invalidation
-- StorageService wraps localStorage with validation
+All three represent **missing state management abstractions**:
 
-**Architectural Leverage:** **MEDIUM** - Resolves 11% of issues (5 of 47) and enables future state features.
+- **MEDIUM-F1:** Product fetching duplicated across `ProductGrid.tsx` and `ProductSelectionPage.tsx`
+- **MEDIUM-F2:** Dashboard lacks auto-refresh because fetching logic is inline—would need to duplicate setInterval logic
+- **MEDIUM-F3:** ProductImage lacks loading state because each component handles loading differently
+
+**Architectural Pattern Needed:**
+```typescript
+// Custom Hook Pattern (Resolves All 3)
+function useProducts(filters: ProductFilters) {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refetch, setRefetch] = useState(0);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [filters, refetch]);
+
+  return { products, loading, error, refetch: () => setRefetch(r => r + 1) };
+}
+
+// Similarly for images, dashboard data, etc.
+```
+
+**If Fixed, This Cluster Would Resolve:**
+- **PRIMARY:** MEDIUM-F1, MEDIUM-F2, MEDIUM-F3
+- **SECONDARY:** Enables consistent loading states across app
+- **TERTIARY:** Reduces code duplication by ~300-400 lines
+
+**Refactor Leverage:** 3 MEDIUM issues + architectural foundation for future data fetching
 
 ---
 
-### Cluster G – Component Architecture & Code Organization
+### Cluster G: Backend Infrastructure Cleanup (Low Priority)
 
 **Underlying Root Cause:**
-Large, complex components with multiple responsibilities. No decomposition strategy. Business logic mixed with presentation. No reusable patterns. Copy-paste instead of abstraction.
+Legacy/deprecated code remains in codebase from previous architectural iterations:
+1. **RateLimit table** (deprecated, NestJS throttler used instead)
+2. **Database-based rate limiting** (MEDIUM-B2: inefficient, should use in-memory)
+3. **Inconsistent route structure** (MEDIUM-B4: admin routes mixed with public routes)
 
-**Affected Layers:**
-- Frontend: All page components, complex UI components
-- Architecture: Component hierarchy, separation of concerns
-- Maintainability: Code duplication, testing difficulty
+These are **technical debt items** from refactoring that wasn't completed. They don't cause immediate problems but increase cognitive load and maintenance burden.
+
+**Impacted Areas:**
+- Backend: Rate limiting infrastructure, Route organization, Database schema
 
 **Linked Issue Identifiers:**
-- **🟡 HIGH-F2:** Code Duplication in ProductGrid (`ProductGrid.tsx:28-96`)
-- **🟡 HIGH-F3:** Complex State Management in ProductDetailPage (265 lines)
-- **🟡 HIGH-F5:** Browser confirm() Dialogs (`CategoriesManagementPage.tsx:78`, etc.)
-- **🟠 MEDIUM-F1:** Complex HeroCarousel Initialization
-- **🟠 MEDIUM-F3:** Race Conditions in ProductSelectionPage
-- **🟠 MEDIUM-F4:** Confirmation Dialogs Using Browser APIs
-- **🟠 MEDIUM-F10:** No 404 Catch-All Route
+- **MEDIUM-B2:** Rate Limit Service Database Inefficiency
+- **MEDIUM-B4:** Inconsistent Route Protection Patterns
+- **LOW (Backend):** Remove deprecated RateLimit table
 
-**Why These Are Connected:**
-All result from not decomposing components into smaller, reusable pieces:
-1. **ProductGrid:** No QueryBuilder abstraction leads to duplication
-2. **ProductDetailPage:** Carousel, data fetching, routing all in one component
-3. **Browser confirm():** No reusable ConfirmDialog component
-4. **HeroCarousel:** Complex initialization because no useCarousel hook
-5. **Race Conditions:** No request cancellation because component manages directly
+**Why These Issues Are Linked:**
 
-**If Fixed, Which Issues Would Be Resolved Simultaneously:**
-Implementing component architecture would resolve **7 issues** (3 high, 4 medium):
-- QueryBuilder eliminates ProductGrid duplication
-- useCarousel hook extracts ProductDetailPage carousel logic
-- ConfirmDialog component replaces browser confirm()
-- useCarousel hook simplifies HeroCarousel
-- useQuery hook with abort controller prevents race conditions
-- 404 page component added to routing
-- Component size reduced, testability improved
+All three represent **incomplete architectural migration**:
 
-**Architectural Leverage:** **MEDIUM** - Resolves 15% of issues (7 of 47) and improves maintainability.
+- **MEDIUM-B2:** `rate-limit.service.ts` writes to database (2 queries per request) despite NestJS throttler being available and configured
+- **MEDIUM-B4:** Routes like `/products/admin/all` exist because admin controller wasn't fully separated during refactoring
+- **LOW:** RateLimit Prisma model still exists with comment "deprecated but kept for backward compatibility"
+
+**If Fixed, This Cluster Would Resolve:**
+- **PRIMARY:** MEDIUM-B2, MEDIUM-B4, LOW (Backend)
+- **SECONDARY:** Reduces database load by ~50% (removes rate limiting writes)
+- **TERTIARY:** Cleaner API structure, easier to maintain
+
+**Refactor Leverage:** 2 MEDIUM + 1 LOW issues + removes ~500 lines of dead code
 
 ---
 
-### Cluster H – Development Experience & Configuration
+### Cluster H: Frontend Polish & Developer Experience (Low Priority)
 
 **Underlying Root Cause:**
-Environment configuration scattered across multiple files. No environment validation. Development-focused features not feature-flagged. Build configuration has development artifacts. No clear separation of concerns between environments.
+Small quality-of-life issues that don't impact functionality but affect developer experience:
+1. **Console warnings** (missing keys, useEffect dependencies)
+2. **Unused code** (ACCESS_TOKEN storage key)
 
-**Affected Layers:**
-- Configuration: Environment variables, build scripts, VS Code settings
-- Development: Chef injection in Vite config, TODO comments
-- Deployment: No environment validation, missing health checks
+These are **cleanup tasks** that should be addressed systematically but don't require architectural changes.
 
-**Linked Issue Identifiers:**
-- **🟠 MEDIUM-B4:** Inconsistent Route Protection Patterns
-- **🟠 MEDIUM-B5:** JWT Expiration Too Long
-- **🟠 MEDIUM-F6:** Theme Validation Gaps
-- **🟢 LOW-B1:** CORS preflight maxAge too short
-- **🟢 LOW-B2:** Exposed file metadata in upload responses
-- **🟢 LOW-F2:** Weak analytics session ID generation
-- **🟢 LOW-F4:** Vite config with Chef injection
-
-**Why These Are Connected:**
-All stem from configuration being scattered and unvalidated:
-1. **Routes:** No clear admin vs public controller separation
-2. **JWT:** Expiration hardcoded instead of environment variable
-3. **Theme:** localStorage value not validated before use
-4. **CORS:** MaxAge hardcoded instead of configurable
-5. **Upload:** Response includes unnecessary metadata
-6. **Session ID:** Math.random() instead of crypto.randomBytes()
-7. **Vite:** Development code mixed with production config
-
-**If Fixed, Which Issues Would Be Resolved Simultaneously:**
-Implementing configuration architecture would resolve **7 issues** (5 medium, 2 low):
-- Environment schema validation with zod or similar
-- Separate AdminController from ProductsController
-- JWT_EXPIRATION from environment (default 15m)
-- Theme validator function
-- CORS_MAX_AGE from environment
-- Upload response cleaned
-- crypto.randomBytes for session IDs
-- Chef injection feature-flagged
-
-**Architectural Leverage:** **LOW-MEDIUM** - Resolves 15% of issues (7 of 47) but mostly polish.
-
----
-
-### Cluster I – Form Handling & User Input Architecture
-
-**Underlying Root Cause:**
-No form management strategy. Each form implements its own validation, error handling, and submission logic. No reusable form components. Client-side validation missing entirely.
-
-**Affected Layers:**
-- Frontend: All admin forms, form components
-- Validation: Client-side validation missing
-- UX: Error messages only after submission
+**Impacted Areas:**
+- Frontend: Various components (console warnings), StorageService (unused key)
 
 **Linked Issue Identifiers:**
-- **🟡 HIGH-F5:** Browser confirm() Dialogs
-- **🟡 HIGH-F6:** Form Validation Missing
-- **🟠 MEDIUM-B3:** Missing Input Validation in Update Endpoints
+- **LOW-F1:** Console Warnings in Development
+- **LOW (Frontend):** Remove unused ACCESS_TOKEN storage key
 
-**Why These Are Connected:**
-All result from no form architecture:
-1. **Confirm Dialogs:** Native browser APIs instead of React components
-2. **Validation:** Relies entirely on backend validation
-3. **Update Endpoints:** Accept empty payloads because no client validation
+**Why These Issues Are Linked:**
 
-**If Fixed, Which Issues Would Be Resolved Simultaneously:**
-Implementing form architecture would resolve **3 issues** (2 high, 1 medium):
-- react-hook-form with zod validation
-- Reusable ConfirmDialog component
-- Client-side validation prevents empty updates
-- Inline error feedback
-- Form state management centralized
+Both are **code hygiene issues** from rapid iteration:
+- Warnings appear during development when React detects potential issues
+- ACCESS_TOKEN key remains from pre-httpOnly-cookie authentication
 
-**Architectural Leverage:** **LOW-MEDIUM** - Resolves 6% of issues (3 of 47) but improves UX significantly.
+**If Fixed, This Cluster Would Resolve:**
+- **PRIMARY:** LOW-F1, LOW (Frontend)
+- **SECONDARY:** Cleaner console output during development
+- **TERTIARY:** Reduces codebase confusion (removes unused constants)
+
+**Refactor Leverage:** 2 LOW issues + improved developer experience
 
 ---
 
-### Cluster J – Testing & Quality Infrastructure
+## 3. Issue Dependency Mapping
 
-**Underlying Root Cause:**
-Zero test coverage. No testing strategy. No CI/CD pipeline. No quality gates. Issues discovered in production or during manual testing.
+### Issue: HIGH-B1 (N+1 Query Problems in Analytics Service)
 
-**Affected Layers:**
-- Testing: No unit, integration, or E2E tests
-- CI/CD: No automated pipeline
-- Quality: No code coverage, linting enforcement, type checking in CI
+- **Root cause category:** Application-Layer Aggregation Anti-Pattern (Cluster A)
+- **Upstream dependency:** None (root cause)
+- **Downstream impact:**
+  - Affects MEDIUM-B2 (database overload makes rate limiting more critical)
+  - Affects scalability assessment (analytics table growth becomes bottleneck)
+- **Related issues:** HIGH-B3 (same query pattern), MEDIUM-B1 (cache pressure from slow queries)
+- **Severity interaction notes:** HIGH severity blocks production scalability—with 10M+ analytics events, dashboard becomes unusable (5-10 second load times)
 
-**Linked Issue Identifiers:**
-- **🟢 LOW:** Testing issues documented in checklist (not enumerated in clusters above)
-
-**Why These Are Connected:**
-All stem from no quality infrastructure:
-1. No test coverage means bugs found late
-2. No CI/CD means manual deployment risk
-3. No automated checks means quality regression
-
-**If Fixed, Which Issues Would Be Resolved Simultaneously:**
-Implementing testing infrastructure would prevent future issues:
-- Vitest + Testing Library for unit tests
-- Playwright for E2E tests
-- GitHub Actions CI/CD pipeline
-- Pre-commit hooks with type checking
-- Code coverage thresholds
-
-**Architectural Leverage:** **LOW** - Doesn't resolve existing issues but prevents future ones.
+**Resolution Complexity:** MEDIUM (2-4 hours)
+**Architectural Impact:** HIGH (establishes query optimization pattern for entire codebase)
 
 ---
 
-## 3. Issue Dependency Graph (Textual)
+### Issue: HIGH-B2 (Missing NULL Checks in Product Caching)
 
-### 🔴 CRITICAL-B1: Hardcoded Admin Credentials
+- **Root cause category:** Cache Integrity & Invalidation Design (Cluster C)
+- **Upstream dependency:** None (root cause)
+- **Downstream impact:**
+  - Directly causes data leaks (unpublished content visible to public)
+  - Affects MEDIUM-B1 (cache invalidation strategy needs revision)
+- **Related issues:** MEDIUM-B1 (over-aggressive invalidation partially compensates for stale cache)
+- **Severity interaction notes:** HIGH severity for security/data integrity—cached DRAFT products visible to public users for cache TTL duration (5 minutes)
 
-**Direct Cause:**
-Development convenience prioritized over security. No environment-based initialization strategy.
-
-**Downstream Impact:**
-- Enables CRITICAL-B2 (setup endpoint returns these credentials)
-- Enables CRITICAL-F3 (frontend displays these credentials)
-- Compromises entire admin system if repository is exposed
-- Git history contains credentials forever unless scrubbed
-
-**Upstream Dependency:**
-- Depends on missing: Environment variable loader with validation
-- Depends on missing: Secure initialization script
-- Depends on missing: Credential rotation strategy
-
-**Related Issue IDs:**
-- CRITICAL-B2 (setup endpoint)
-- CRITICAL-F3 (frontend setup)
-- MEDIUM-B5 (JWT expiration compounds risk)
-
-**Severity Interaction Notes:**
-If credentials leaked, 24-hour JWT expiration (MEDIUM-B5) means attacker has 24-hour window. Fixing CRITICAL-B1 reduces MEDIUM-B5 severity.
+**Resolution Complexity:** LOW (1-2 hours)
+**Architectural Impact:** MEDIUM (requires cache validation pattern)
 
 ---
 
-### 🔴 CRITICAL-B2: Insecure Setup Endpoint
+### Issue: HIGH-B3 (Circular Reference Check Inefficiency)
 
-**Direct Cause:**
-No secure initialization strategy. Endpoint designed for development without production security model.
+- **Root cause category:** Application-Layer Aggregation Anti-Pattern (Cluster A) + Input Validation Architecture Gaps (Cluster B)
+- **Upstream dependency:** None (root cause)
+- **Downstream impact:**
+  - DoS vulnerability (attackers can create deep hierarchies)
+  - Database load (N queries per category update)
+- **Related issues:**
+  - HIGH-B1 (same N+1 query pattern)
+  - HIGH-B4 (missing depth validation in DTO)
+- **Severity interaction notes:** HIGH severity for DoS risk—100 concurrent deep hierarchy updates can overwhelm database
 
-**Downstream Impact:**
-- Returns credentials from CRITICAL-B1 in plain text
-- Race condition allows multiple admin creation
-- Public endpoint discoverable by scanners
-- CSRF vulnerability with @Public() decorator
-
-**Upstream Dependency:**
-- Depends on: CRITICAL-B1 (credentials to return)
-- Requires: Secure initialization script to replace
-- Requires: Environment variable validation
-
-**Related Issue IDs:**
-- CRITICAL-B1 (credentials source)
-- CRITICAL-F3 (frontend calls this)
-- MEDIUM-B4 (route protection inconsistency)
-
-**Severity Interaction Notes:**
-Combined with CRITICAL-B1, provides complete takeover path. Cannot fix CRITICAL-B2 without fixing CRITICAL-B1 first.
+**Resolution Complexity:** LOW (1-2 hours)
+**Architectural Impact:** LOW (adds depth limit guard)
 
 ---
 
-### 🔴 CRITICAL-F1: Token Storage in localStorage (XSS)
+### Issue: HIGH-B4 (Inadequate Validation in DTOs)
 
-**Direct Cause:**
-No secure token storage strategy. Convenience prioritized (easy access from JS) over security (httpOnly cookies).
+- **Root cause category:** Input Validation Architecture Gaps (Cluster B)
+- **Upstream dependency:** None (root cause)
+- **Downstream impact:**
+  - DoS vulnerability (oversized metadata payloads)
+  - Database bloat (JSON column overflow)
+  - Affects HIGH-B1 (analytics queries slower with large metadata)
+- **Related issues:**
+  - HIGH-B3 (both need custom validation decorators)
+  - MEDIUM-B3 (similar validation gap for update DTOs)
+- **Severity interaction notes:** HIGH severity for DoS risk—single malicious request with 100MB metadata can crash Node.js
 
-**Downstream Impact:**
-- Any XSS attack steals token immediately
-- CRITICAL-F5 (inadequate sanitization) enables XSS
-- CRITICAL-F4 (no CSP enforcement) allows XSS execution
-- Stolen token valid for 24 hours (MEDIUM-B5)
-
-**Upstream Dependency:**
-- Requires: Backend to support httpOnly cookie authentication
-- Requires: CORS configuration for credentials
-- Requires: API interceptor refactor
-
-**Related Issue IDs:**
-- CRITICAL-F4 (CSP not enforced)
-- CRITICAL-F5 (XSS possible)
-- CRITICAL-F7 (session also in localStorage)
-- MEDIUM-F9 (dual storage)
-- MEDIUM-B5 (JWT expiration)
-
-**Severity Interaction Notes:**
-Single point of failure. If ANY XSS exists (F4, F5), credentials stolen. Compounded by F7 (session also stolen), F9 (two sources to steal).
+**Resolution Complexity:** MEDIUM (2-3 hours, requires custom decorators)
+**Architectural Impact:** HIGH (establishes validation decorator library for entire codebase)
 
 ---
 
-### 🔴 CRITICAL-F2: Hard Redirect on 401 Loses State
+### Issue: HIGH-B5 (Type Safety in Products Service)
 
-**Direct Cause:**
-API interceptor uses `window.location.href` instead of React Router navigate. No state preservation strategy.
+- **Root cause category:** Frontend Type System Erosion (Cluster D)
+- **Upstream dependency:** None (root cause)
+- **Downstream impact:**
+  - Directly causes HIGH-F1 (frontend receives untyped responses)
+  - Harder to refactor Products module
+  - No IDE autocomplete for service methods
+- **Related issues:** HIGH-F1 (type definitions propagate from backend to frontend)
+- **Severity interaction notes:** HIGH severity for maintainability—refactoring Products module is risky without explicit types
 
-**Downstream Impact:**
-- User loses all form data on token expiration
-- Scroll position lost
-- Navigation state lost
-- Poor UX on legitimate session expiration
-
-**Upstream Dependency:**
-- Requires: React Router useNavigate access in interceptor
-- Requires: State preservation strategy
-- Compounded by: MEDIUM-B5 (24-hour expiration makes this rare but severe when it happens)
-
-**Related Issue IDs:**
-- MEDIUM-B5 (JWT expiration)
-- CRITICAL-F1 (token storage)
-- HIGH-F7 (error boundaries would catch navigation errors)
-
-**Severity Interaction Notes:**
-Occurs when JWT expires. With 24-hour expiration (MEDIUM-B5), happens once per day max, but is catastrophic when it does.
+**Resolution Complexity:** MEDIUM (2-3 hours, define interface for ProductWithRelations)
+**Architectural Impact:** HIGH (establishes pattern for explicit service return types)
 
 ---
 
-### 🔴 CRITICAL-F3: Setup Endpoint Exposes Credentials
+### Issue: HIGH-F1 (Type Safety Gaps - any types)
 
-**Direct Cause:**
-Frontend has UI to call CRITICAL-B2 and displays returned credentials in DOM.
+- **Root cause category:** Frontend Type System Erosion (Cluster D)
+- **Upstream dependency:** HIGH-B5 (backend services don't export typed responses)
+- **Downstream impact:**
+  - Runtime errors from incorrect property access
+  - Slower development (no autocomplete)
+  - Harder to refactor components
+- **Related issues:** HIGH-B5 (upstream cause)
+- **Severity interaction notes:** HIGH severity for maintainability—`any` types throughout codebase negate TypeScript benefits
 
-**Downstream Impact:**
-- Credentials visible in DOM (XSS attack vector)
-- Credentials in browser history
-- Credentials in React DevTools
-- Credentials in network tab
-
-**Upstream Dependency:**
-- Depends on: CRITICAL-B2 (endpoint to call)
-- Depends on: CRITICAL-B1 (credentials to expose)
-
-**Related Issue IDs:**
-- CRITICAL-B1 (credentials source)
-- CRITICAL-B2 (endpoint called)
-
-**Severity Interaction Notes:**
-Part of credential exposure chain. Cannot exist without B1 and B2. Fixing B2 automatically fixes F3.
+**Resolution Complexity:** MEDIUM-HIGH (4-6 hours, requires systematic type definition)
+**Architectural Impact:** HIGH (requires linting rules to prevent future `any` types)
 
 ---
 
-### 🔴 CRITICAL-F4: CSP Meta Tags Not Enforced
+### Issue: HIGH-F2 (Error Handling Improvements)
 
-**Direct Cause:**
-Misunderstanding of how CSP works. Meta tags are not enforced by browsers for CSP. HTTP headers required.
+- **Root cause category:** Frontend Error Handling Fragmentation (Cluster E)
+- **Upstream dependency:** None (root cause—incomplete adoption of ErrorService)
+- **Downstream impact:**
+  - Inconsistent user experience
+  - Missing error logs in production
+  - Harder to debug production issues
+- **Related issues:**
+  - MEDIUM-F1 (custom hooks would standardize error handling)
+  - MEDIUM-F2 (dashboard errors not properly handled)
+- **Severity interaction notes:** HIGH severity for UX—admin users see cryptic errors or no feedback on failures
 
-**Downstream Impact:**
-- False sense of security
-- XSS attacks succeed despite "CSP"
-- Inline scripts execute (enables CRITICAL-F5 exploitation)
-- CRITICAL-F1 vulnerability exploitable via XSS
-
-**Upstream Dependency:**
-- Requires: Backend to set CSP headers
-- Requires: Helmet configuration in main.ts
-- Requires: Testing that inline scripts are blocked
-
-**Related Issue IDs:**
-- CRITICAL-F5 (XSS possible)
-- CRITICAL-F1 (exploitable via XSS)
-- HIGH-B4 (metadata injection)
-
-**Severity Interaction Notes:**
-Defense-in-depth layer missing. Even if F5 sanitization bypassed, CSP should prevent execution. Currently no defense.
+**Resolution Complexity:** MEDIUM (3-4 hours, find and replace all try-catch blocks)
+**Architectural Impact:** MEDIUM (establishes error handling pattern enforcement)
 
 ---
 
-### 🔴 CRITICAL-F5: Inadequate Input Sanitization
+### Issue: MEDIUM-B1 (Cache Invalidation Over-Aggressive)
 
-**Direct Cause:**
-Regex-based sanitization easily bypassed. No library like DOMPurify used. Case-sensitive regex misses uppercase variants.
+- **Root cause category:** Cache Integrity & Invalidation Design (Cluster C)
+- **Upstream dependency:** HIGH-B2 (related cache integrity issue)
+- **Downstream impact:**
+  - Reduced cache hit rate (~60% instead of ~80%)
+  - Thundering herd problem (1000 clients refetch simultaneously)
+  - Database query spikes
+- **Related issues:**
+  - HIGH-B2 (both need smarter cache strategy)
+  - HIGH-B1 (slow queries increase impact of cache misses)
+- **Severity interaction notes:** MEDIUM severity—reduces cache effectiveness by 40-60%, but not blocking
 
-**Downstream Impact:**
-- XSS attacks possible throughout app
-- Enables exploitation of CRITICAL-F1 (token theft)
-- Renders CRITICAL-F4 irrelevant (not enforced anyway)
-- User data vulnerable to injection
-
-**Upstream Dependency:**
-- Requires: DOMPurify library installation
-- Requires: Backend sanitization as well (defense-in-depth)
-- Requires: HIGH-B4 metadata validation to prevent server-side injection
-
-**Related Issue IDs:**
-- CRITICAL-F4 (CSP not enforced)
-- CRITICAL-F1 (token theft via XSS)
-- HIGH-B4 (metadata injection)
-
-**Severity Interaction Notes:**
-Primary attack vector for session hijacking. Combined with F1 (localStorage token) and F4 (no CSP), creates perfect storm.
+**Resolution Complexity:** MEDIUM (2-3 hours, implement granular invalidation)
+**Architectural Impact:** HIGH (requires entity-aware cache invalidation)
 
 ---
 
-### 🔴 CRITICAL-F6: Promise.all Failure Cascade
+### Issue: MEDIUM-B2 (Rate Limit Service Database Inefficiency)
 
-**Direct Cause:**
-No error isolation. Promise.all fails if any promise fails, crashing entire page even if main data loaded successfully.
+- **Root cause category:** Backend Infrastructure Cleanup (Cluster G)
+- **Upstream dependency:** HIGH-B1 (database overload makes rate limiting more critical)
+- **Downstream impact:**
+  - 2 extra database queries per request
+  - Table bloat (millions of rate limit records)
+  - DELETE queries slow on large tables
+- **Related issues:**
+  - LOW (Backend) - Remove deprecated RateLimit table
+  - HIGH-B1 (database pressure compounded)
+- **Severity interaction notes:** MEDIUM severity—with 1000 req/sec, adds 2000 queries/sec (50% extra load)
 
-**Downstream Impact:**
-- ProductDetailPage shows blank screen if related products API fails
-- Poor error recovery
-- Inconsistent with error boundaries strategy
-
-**Upstream Dependency:**
-- Requires: Promise.allSettled or independent try-catch
-- Requires: HIGH-F7 error boundary strategy
-- Related to: MEDIUM-F2 silent failures (inconsistent error handling)
-
-**Related Issue IDs:**
-- HIGH-F7 (error boundaries)
-- HIGH-F8 (single error boundary)
-- MEDIUM-F2 (silent failures)
-- MEDIUM-F8 (inconsistent patterns)
-
-**Severity Interaction Notes:**
-Error handling cluster. Part of broader pattern of no error architecture.
+**Resolution Complexity:** MEDIUM (3-4 hours, migrate to NestJS throttler)
+**Architectural Impact:** MEDIUM (removes entire database table and service)
 
 ---
 
-### 🔴 CRITICAL-F7: Session Stored in Plain JSON (localStorage)
+### Issue: MEDIUM-B3 (Missing Input Validation in Update Endpoints)
 
-**Direct Cause:**
-Dual storage pattern. JWT contains session data but also stored separately in localStorage for convenience.
+- **Root cause category:** Input Validation Architecture Gaps (Cluster B)
+- **Upstream dependency:** Related to HIGH-B4 (same validation gap)
+- **Downstream impact:**
+  - Empty update calls succeed
+  - Audit log noise
+  - API contract violated
+- **Related issues:** HIGH-B4 (both need custom validators)
+- **Severity interaction notes:** MEDIUM severity—causes confusion but not security/stability risk
 
-**Downstream Impact:**
-- Session data stolen via XSS (same as CRITICAL-F1)
-- MEDIUM-F9 (dual storage) means two sources of truth
-- Data can become stale if JWT refreshed but localStorage not updated
-
-**Upstream Dependency:**
-- Depends on: CRITICAL-F1 (localStorage vulnerability)
-- Caused by: MEDIUM-F9 (dual storage pattern)
-- Requires: AuthService to decode JWT on-demand
-
-**Related Issue IDs:**
-- CRITICAL-F1 (localStorage token)
-- MEDIUM-F9 (dual storage)
-
-**Severity Interaction Notes:**
-Compounds CRITICAL-F1 impact. Not only token stolen, but also session data (email, role, adminId). Two vectors instead of one.
+**Resolution Complexity:** LOW (1-2 hours, add require-at-least-one validator)
+**Architectural Impact:** LOW (applies existing validator pattern)
 
 ---
 
-### 🟡 HIGH-B1: N+1 Query Problems in Analytics Service
+### Issue: MEDIUM-B4 (Inconsistent Route Protection Patterns)
 
-**Direct Cause:**
-Manual JavaScript aggregation instead of database-level GROUP BY. Then N+1 product lookups.
+- **Root cause category:** Backend Infrastructure Cleanup (Cluster G)
+- **Upstream dependency:** None (legacy from incomplete refactoring)
+- **Downstream impact:**
+  - Risk of accidentally exposing admin endpoint
+  - Confusing API structure for frontend developers
+- **Related issues:** MEDIUM-B2 (both infrastructure cleanup)
+- **Severity interaction notes:** MEDIUM severity—creates security confusion but currently protected by guards
 
-**Downstream Impact:**
-- Admin analytics unusable with >100K events
-- Database overwhelmed
-- Response times 5-10 seconds with 10M events
-- Blocks horizontal scaling
-
-**Upstream Dependency:**
-- Requires: Prisma groupBy refactor
-- Requires: Single product query with IN clause
-- Related to: LOW-B3 missing composite index on AnalyticsEvent
-
-**Related Issue IDs:**
-- LOW-B3 (missing index)
-- MEDIUM-B1 (cache invalidation affects analytics)
-
-**Severity Interaction Notes:**
-Performance bottleneck. Affects admin users only, not public. Still HIGH because blocks analytics feature at scale.
+**Resolution Complexity:** MEDIUM (3-4 hours, separate admin controllers)
+**Architectural Impact:** HIGH (establishes clear API namespace structure)
 
 ---
 
-### 🟡 HIGH-B2: Missing NULL Checks in Product Caching
+### Issue: MEDIUM-F1 (Code Duplication in ProductGrid)
 
-**Direct Cause:**
-Cache doesn't validate cached product status before returning. Status could change from PUBLISHED to DRAFT after caching.
+- **Root cause category:** Frontend Data Fetching Duplication (Cluster F)
+- **Upstream dependency:** None (root cause—missing custom hooks)
+- **Downstream impact:**
+  - Code duplication (~200-300 lines)
+  - Inconsistent loading states
+  - Harder to maintain fetching logic
+- **Related issues:**
+  - MEDIUM-F2 (dashboard lacks refetch because logic is inline)
+  - MEDIUM-F3 (image loading inconsistent)
+  - HIGH-F2 (custom hooks would standardize error handling)
+- **Severity interaction notes:** MEDIUM severity—maintainability issue, not functional bug
 
-**Downstream Impact:**
-- DRAFT/ARCHIVED products visible to public for cache TTL (5 minutes)
-- Data leak risk
-- Cache becomes source of incorrect state
-- Related to MEDIUM-B1 (over-aggressive invalidation doesn't help because product-level not targeted)
-
-**Upstream Dependency:**
-- Requires: Status validation in cache retrieval
-- Requires: MEDIUM-B1 targeted invalidation on status change
-- Related to: State management cluster (Cluster F)
-
-**Related Issue IDs:**
-- MEDIUM-B1 (cache invalidation)
-- State management issues in Cluster F
-
-**Severity Interaction Notes:**
-Cache correctness issue. HIGH because causes data leak (unpublished content visible). Compounded by cache invalidation being too broad (MEDIUM-B1).
+**Resolution Complexity:** MEDIUM (3-4 hours, create useProducts hook)
+**Architectural Impact:** HIGH (establishes custom hooks pattern for all data fetching)
 
 ---
 
-### 🟡 HIGH-B3: Circular Reference Check Inefficiency
+### Issue: MEDIUM-F2 (Admin Dashboard Data Refresh)
 
-**Direct Cause:**
-Unbounded loop queries database once per parent level. No depth limit. N queries for N-level hierarchy.
+- **Root cause category:** Frontend Data Fetching Duplication (Cluster F)
+- **Upstream dependency:** MEDIUM-F1 (missing custom hooks)
+- **Downstream impact:**
+  - Dashboard shows stale data
+  - Users must manually refresh page
+- **Related issues:** MEDIUM-F1 (custom hook would provide refetch capability)
+- **Severity interaction notes:** MEDIUM severity—UX issue, not blocking functionality
 
-**Downstream Impact:**
-- DoS vulnerability (create deep hierarchy, update triggers 1000+ queries)
-- Performance degradation with legitimate deep hierarchies
-- Database connection pool exhaustion
-
-**Upstream Dependency:**
-- Requires: MAX_DEPTH constant (50 levels)
-- Requires: Batch query to load parent chain
-- Could use: Recursive CTE for single query
-
-**Related Issue IDs:**
-- Part of query optimization cluster (Cluster D)
-
-**Severity Interaction Notes:**
-DoS vector. HIGH because attacker can deliberately create deep hierarchy. Rare in normal use but exploitable.
+**Resolution Complexity:** LOW (1-2 hours, add refetch button OR setInterval)
+**Architectural Impact:** LOW (if fixed alone) / HIGH (if fixed with MEDIUM-F1 via custom hooks)
 
 ---
 
-### 🟡 HIGH-B4: Inadequate Validation in DTOs
+### Issue: MEDIUM-F3 (Image Loading States)
 
-**Direct Cause:**
-No size or depth validation on metadata field. Accepts unlimited JSON objects.
+- **Root cause category:** Frontend Data Fetching Duplication (Cluster F)
+- **Upstream dependency:** MEDIUM-F1 (missing standard loading pattern)
+- **Downstream impact:**
+  - No loading indicators for images
+  - Users see empty spaces until images load
+- **Related issues:** MEDIUM-F1 (custom hooks pattern applies to image loading)
+- **Severity interaction notes:** MEDIUM severity—UX polish, not functional issue
 
-**Downstream Impact:**
-- Memory exhaustion attack (100MB JSON)
-- Database bloat
-- DoS vulnerability
-- Related to CRITICAL-F5 (input validation) on backend side
-
-**Upstream Dependency:**
-- Requires: Custom validators for maxSize, maxDepth
-- Requires: Current mitigation (1000-char limit in service) moved to DTO
-- Related to: Validation cluster (Cluster B)
-
-**Related Issue IDs:**
-- CRITICAL-F5 (input sanitization)
-- MEDIUM-B3 (empty update validation)
-- Part of validation cluster
-
-**Severity Interaction Notes:**
-DoS vector via analytics events. HIGH because can exhaust memory/database. Service-level mitigation exists (1000-char) but should be in DTO.
+**Resolution Complexity:** LOW (1-2 hours, add loading state to ProductImage)
+**Architectural Impact:** LOW (isolated component change)
 
 ---
 
-### 🟡 HIGH-F1: Type Safety Gaps (`any` types)
+### Issue: LOW-F1 (Console Warnings in Development)
 
-**Direct Cause:**
-Convenience over safety. `any` types avoid defining proper interfaces. Copy-paste without refactoring.
+- **Root cause category:** Frontend Polish & Developer Experience (Cluster H)
+- **Upstream dependency:** None (cleanup task)
+- **Downstream impact:** Cluttered console during development
+- **Related issues:** LOW (Frontend) - Both code hygiene issues
+- **Severity interaction notes:** LOW severity—developer experience only, no user impact
 
-**Downstream Impact:**
-- Runtime errors instead of compile-time
-- No IDE autocomplete
-- Difficult to refactor
-- API contract changes cause runtime failures
-- Affects 8+ components
-
-**Upstream Dependency:**
-- Requires: Product, Category, UseCase interface definitions
-- Requires: Shared types package between frontend/backend
-- Related to: MEDIUM-F7 (API response assumptions)
-
-**Related Issue IDs:**
-- MEDIUM-F7 (API response shape assumptions)
-- LOW-F3 (tsconfig stricter)
-- Part of type safety cluster (Cluster C)
-
-**Severity Interaction Notes:**
-Maintenance debt. HIGH because affects 8+ locations and prevents refactoring. Each instance a potential runtime error.
+**Resolution Complexity:** LOW (1-2 hours, systematic cleanup)
+**Architectural Impact:** NONE (code hygiene)
 
 ---
 
-### 🟡 HIGH-F2: Code Duplication in ProductGrid
+### Issue: LOW (Backend) - Remove deprecated RateLimit table
 
-**Direct Cause:**
-No query builder abstraction. Four conditional branches with duplicated API call logic. Then duplicated again in handleLoadMore.
+- **Root cause category:** Backend Infrastructure Cleanup (Cluster G)
+- **Upstream dependency:** MEDIUM-B2 (should migrate to in-memory first)
+- **Downstream impact:** None (table not actively used)
+- **Related issues:** MEDIUM-B2 (blocks this cleanup)
+- **Severity interaction notes:** LOW severity—technical debt, not functional issue
 
-**Downstream Impact:**
-- Changes require 8 updates (4 fetch + 4 loadMore)
-- Bug risk (inconsistent updates)
-- Maintenance burden
-- Testing difficulty
-
-**Upstream Dependency:**
-- Requires: QueryBuilder service or hook
-- Related to: State management cluster (Cluster F)
-- Related to: Component architecture cluster (Cluster G)
-
-**Related Issue IDs:**
-- Part of state management cluster (Cluster F)
-- Part of component architecture cluster (Cluster G)
-
-**Severity Interaction Notes:**
-Maintenance debt. HIGH because affects critical component (ProductGrid). 8 locations to update per change.
+**Resolution Complexity:** LOW (1 hour, migration to drop table)
+**Architectural Impact:** NONE (removes dead code)
 
 ---
 
-### 🟡 HIGH-F3: Complex State Management in ProductDetailPage
+### Issue: LOW (Frontend) - Remove unused ACCESS_TOKEN storage key
 
-**Direct Cause:**
-Single component handles carousel, data fetching, routing, error handling. 265 lines. No decomposition.
+- **Root cause category:** Frontend Polish & Developer Experience (Cluster H)
+- **Upstream dependency:** None (leftover from authentication refactor)
+- **Downstream impact:** None (key not used)
+- **Related issues:** LOW-F1 (both code cleanup)
+- **Severity interaction notes:** LOW severity—code hygiene, no functional impact
 
-**Downstream Impact:**
-- Difficult to test
-- Difficult to maintain
-- Related to CRITICAL-F6 (Promise.all) in same component
-- Carousel logic not reusable
-
-**Upstream Dependency:**
-- Requires: useCarousel hook extraction
-- Requires: Data fetching separated from UI
-- Related to: Component architecture cluster (Cluster G)
-
-**Related Issue IDs:**
-- CRITICAL-F6 (Promise.all in same component)
-- Part of component architecture cluster (Cluster G)
-
-**Severity Interaction Notes:**
-Maintainability issue. HIGH because 265-line component is hard to reason about. Contains CRITICAL-F6 issue.
+**Resolution Complexity:** TRIVIAL (<30 minutes, remove constant)
+**Architectural Impact:** NONE (removes dead code)
 
 ---
 
-### 🟡 HIGH-F4: Weak Password Reset Flow
+## 4. Fix Order Strategy (Leverage-Based)
 
-**Direct Cause:**
-Not implemented. No password reset functionality.
+### Phase 1 – Highest Leverage Structural Fixes
 
-**Downstream Impact:**
-- Admin locked out if password forgotten
-- Support burden (manual password reset)
-- Security risk (workaround is creating new admin)
+**Priority:** IMMEDIATE (Before Production)
+**Estimated Time:** 8-12 hours total
+**Risk Level:** LOW-MEDIUM (well-understood changes, high test coverage)
 
-**Upstream Dependency:**
-- Requires: Password reset token generation
-- Requires: Email sending capability
-- Requires: Token validation and expiration
-- Related to: Authentication cluster (Cluster A)
+#### Fix Order & Rationale
 
-**Related Issue IDs:**
-- Part of authentication cluster (Cluster A)
+**1. HIGH-B4 → HIGH-B3 → MEDIUM-B3** (Cluster B: Input Validation)
+- **Time:** 4-5 hours
+- **Why first:** Security-critical (DoS prevention), blocks production deployment
+- **Leverage:** Single custom validator library resolves 3 issues
+- **Approach:**
+  1. Create custom decorators: `@MaxDepth()`, `@MaxSize()`, `@RequireAtLeastOne()`
+  2. Apply to `track-event.dto.ts` (HIGH-B4)
+  3. Add depth limit to category service (HIGH-B3)
+  4. Apply to update DTOs (MEDIUM-B3)
+- **Architectural impact:** Establishes validation pattern for entire codebase
+- **Dependencies:** None (standalone)
 
-**Severity Interaction Notes:**
-Feature gap. HIGH because locks admins out permanently. Workaround is security risk (creating second admin with CRITICAL-B2 endpoint).
+**2. HIGH-B2 → MEDIUM-B1** (Cluster C: Cache Integrity)
+- **Time:** 3-4 hours
+- **Why second:** Data integrity issue (unpublished content leak)
+- **Leverage:** Fixes cache strategy for entire application
+- **Approach:**
+  1. Add cache validation to `products.service.ts` (HIGH-B2)
+  2. Implement granular invalidation with entity tracking (MEDIUM-B1)
+  3. Update cache service to support validation callbacks
+- **Architectural impact:** Establishes cache integrity pattern
+- **Dependencies:** None (standalone)
 
----
+**3. HIGH-B1** (Cluster A: Query Optimization - Part 1)
+- **Time:** 3-4 hours
+- **Why third:** Performance blocker for admin analytics
+- **Leverage:** Establishes database-first query pattern
+- **Approach:**
+  1. Replace `findMany()` + JS aggregation with `groupBy()`
+  2. Replace N+1 `findUnique()` with single `findMany({ where: { id: { in: [...] } } })`
+  3. Verify composite index on `[eventType, entityId, timestamp]` exists
+- **Architectural impact:** Demonstrates proper Prisma query optimization
+- **Dependencies:** None (standalone)
 
-### 🟡 HIGH-F5: Browser confirm() Dialogs
-
-**Direct Cause:**
-No reusable ConfirmDialog component. Each admin page uses native browser `confirm()`.
-
-**Downstream Impact:**
-- Inconsistent with app design
-- Cannot be styled (light/dark mode)
-- Poor accessibility
-- UX inconsistency
-
-**Upstream Dependency:**
-- Requires: Reusable ConfirmDialog component
-- Related to: Component architecture cluster (Cluster G)
-- Related to: Form handling cluster (Cluster I)
-
-**Related Issue IDs:**
-- MEDIUM-F4 (same issue, mentioned twice in audit)
-- Part of component architecture cluster (Cluster G)
-- Part of form handling cluster (Cluster I)
-
-**Severity Interaction Notes:**
-UX debt. HIGH because affects multiple admin pages and looks unprofessional.
-
----
-
-### 🟡 HIGH-F6: Form Validation Missing
-
-**Direct Cause:**
-No client-side validation. Relies entirely on backend validation.
-
-**Downstream Impact:**
-- Poor UX (errors only after submission)
-- Unnecessary network requests
-- No inline error feedback
-- Related to MEDIUM-B3 (empty updates accepted)
-
-**Upstream Dependency:**
-- Requires: react-hook-form + zod
-- Requires: Validation schemas for each form
-- Related to: Form handling cluster (Cluster I)
-
-**Related Issue IDs:**
-- MEDIUM-B3 (empty update validation)
-- Part of form handling cluster (Cluster I)
-
-**Severity Interaction Notes:**
-UX debt. HIGH because affects all admin forms. Users get errors after submission, not during input.
+**Phase 1 Outcomes:**
+- ✅ All HIGH-B issues resolved (except HIGH-B5, which is tied to frontend)
+- ✅ DoS vulnerabilities eliminated (HIGH-B4, HIGH-B3)
+- ✅ Data leak prevented (HIGH-B2)
+- ✅ Analytics performance improved 95% (HIGH-B1)
+- ✅ Cache hit rate improves from 60% to 80% (MEDIUM-B1)
+- ✅ Production deployment unblocked
 
 ---
 
-### 🟡 HIGH-F7: Missing Error Boundaries at Route Level
+### Phase 2 – Cross-Cutting Type Safety & Error Handling
 
-**Direct Cause:**
-Only root-level ErrorBoundary. Single component error crashes entire app.
+**Priority:** POST-LAUNCH (Week 1)
+**Estimated Time:** 10-14 hours total
+**Risk Level:** MEDIUM (requires systematic refactoring, but well-understood patterns)
 
-**Downstream Impact:**
-- Poor error isolation
-- Entire app crashes instead of single route
-- Related to CRITICAL-F6 (Promise.all failures)
-- Related to HIGH-F8 (single boundary coverage)
+#### Fix Order & Rationale
 
-**Upstream Dependency:**
-- Requires: Error boundaries at route, layout, component levels
-- Related to: Error handling cluster (Cluster E)
+**4. HIGH-B5 → HIGH-F1** (Cluster D: Type System)
+- **Time:** 6-8 hours
+- **Why fourth:** Unblocks frontend type safety (HIGH-F1 depends on HIGH-B5)
+- **Leverage:** Single backend type definition refactor enables frontend type safety
+- **Approach:**
+  1. Define explicit interfaces for service return types in `products.service.ts`
+  2. Apply to all service methods with explicit return types
+  3. Export types from backend for frontend consumption
+  4. Update frontend components to import and use these types
+  5. Enable stricter TypeScript rules: `noImplicitAny: true`
+  6. Fix all type errors revealed by stricter rules
+- **Architectural impact:** Establishes type contract between backend and frontend
+- **Dependencies:** HIGH-B5 must be fixed before HIGH-F1
 
-**Related Issue IDs:**
-- HIGH-F8 (same issue from different angle)
-- CRITICAL-F6 (error recovery)
-- MEDIUM-F8 (inconsistent patterns)
-- Part of error handling cluster (Cluster E)
+**5. HIGH-F2** (Cluster E: Error Handling)
+- **Time:** 3-4 hours
+- **Why fifth:** Improves user experience, enables better production debugging
+- **Leverage:** Standardizes error handling across entire frontend
+- **Approach:**
+  1. Audit all `try-catch` blocks in admin pages
+  2. Replace with `ErrorService.handleApiError()` pattern
+  3. Add user-friendly error messages for common failure scenarios
+  4. Ensure all API calls use standardized error handling
+- **Architectural impact:** Establishes uniform error handling pattern
+- **Dependencies:** None (but synergizes with MEDIUM-F1 if custom hooks used)
 
-**Severity Interaction Notes:**
-Stability issue. HIGH because single component error makes entire app unusable. Should isolate to route/section.
-
----
-
-### 🟡 HIGH-F8: Single Error Boundary Coverage
-
-**Direct Cause:**
-Same as HIGH-F7 (only root ErrorBoundary exists).
-
-**Downstream Impact:**
-Same as HIGH-F7.
-
-**Upstream Dependency:**
-Same as HIGH-F7.
-
-**Related Issue IDs:**
-Same as HIGH-F7.
-
-**Severity Interaction Notes:**
-Same issue as HIGH-F7, documented from different perspective in audit.
+**Phase 2 Outcomes:**
+- ✅ All HIGH issues resolved (backend and frontend)
+- ✅ Type safety enforced across entire stack
+- ✅ Developer velocity improved (autocomplete, refactoring tools)
+- ✅ User experience improved (clear error messages)
+- ✅ Production debugging capabilities enhanced
 
 ---
 
-### 🟠 MEDIUM Issues (15 total)
+### Phase 3 – Frontend Architecture & Backend Cleanup
 
-**Backend Medium Issues:**
+**Priority:** POST-LAUNCH (Week 2-3)
+**Estimated Time:** 12-16 hours total
+**Risk Level:** LOW (nice-to-have improvements, no functional changes)
 
-**MEDIUM-B1: Cache Invalidation Over-Aggressive**
-- **Cause:** `deletePattern('product:')` nukes all caches instead of targeted invalidation
-- **Impact:** Cache effectiveness reduced 40-60%, thundering herd
-- **Dependencies:** HIGH-B2 (cache validation), State cluster (Cluster F)
-- **Related:** HIGH-B2, Cluster F state management
+#### Fix Order & Rationale
 
-**MEDIUM-B2: Rate Limit Service Database Inefficiency**
-- **Cause:** Database used for rate limiting instead of in-memory/Redis
-- **Impact:** 2 queries per request, table bloat, 50% extra DB load
-- **Dependencies:** Query optimization cluster (Cluster D)
-- **Related:** Cluster D query architecture
+**6. MEDIUM-F1 → MEDIUM-F2 → MEDIUM-F3** (Cluster F: Data Fetching)
+- **Time:** 6-8 hours
+- **Why sixth:** Reduces code duplication, enables consistent UX
+- **Leverage:** Single custom hooks pattern resolves 3 issues + ~300 lines duplication
+- **Approach:**
+  1. Create custom hooks library
+  2. Refactor components to use hooks
+  3. Add auto-refresh and loading states
+- **Architectural impact:** Establishes data fetching layer for entire frontend
+- **Dependencies:** Synergizes with HIGH-F2 (error handling)
 
-**MEDIUM-B3: Missing Input Validation in Update Endpoints**
-- **Cause:** Empty update requests `{}` succeed without changes
-- **Impact:** Audit log noise, API contract violation
-- **Dependencies:** Validation cluster (Cluster B), HIGH-F6 (form validation)
-- **Related:** HIGH-B4, HIGH-F6, Cluster B validation
+**7. MEDIUM-B2 → LOW (Backend)** (Cluster G: Infrastructure Cleanup - Part 1)
+- **Time:** 4-5 hours
+- **Why seventh:** Reduces database load by 50%, enables table removal
+- **Leverage:** Removes entire deprecated service and database table
+- **Approach:**
+  1. Verify NestJS throttler configuration
+  2. Remove calls to rate-limit.service.ts
+  3. Delete service and create migration to drop table
+- **Architectural impact:** Cleans up deprecated infrastructure
+- **Dependencies:** MEDIUM-B2 must be fixed before LOW (Backend)
 
-**MEDIUM-B4: Inconsistent Route Protection Patterns**
-- **Cause:** Admin routes mixed with public routes in same controller
-- **Impact:** Easy to accidentally expose admin endpoint
-- **Dependencies:** Configuration cluster (Cluster H)
-- **Related:** CRITICAL-B2, Cluster H configuration
+**8. MEDIUM-B4** (Cluster G: Infrastructure Cleanup - Part 2)
+- **Time:** 3-4 hours
+- **Why eighth:** Improves API structure, reduces security confusion
+- **Leverage:** Establishes clear admin vs public route namespace
+- **Approach:**
+  1. Create separate AdminProductsController with `/api/admin/products/*` routes
+  2. Move admin-only endpoints
+  3. Update frontend API client
+- **Architectural impact:** Clear API namespace separation
+- **Dependencies:** None (standalone)
 
-**MEDIUM-B5: JWT Expiration Too Long**
-- **Cause:** 24-hour tokens without refresh mechanism
-- **Impact:** Stolen tokens valid for 24 hours
-- **Dependencies:** Authentication cluster (Cluster A)
-- **Related:** CRITICAL-F1, CRITICAL-F2, Cluster A authentication
+**9. LOW-F1 → LOW (Frontend)** (Cluster H: Polish)
+- **Time:** 1-2 hours
+- **Why last:** Code hygiene, no functional impact
+- **Leverage:** Improved developer experience
+- **Approach:**
+  1. Add missing React keys
+  2. Fix useEffect dependencies
+  3. Remove unused constants
+- **Architectural impact:** None (code hygiene)
+- **Dependencies:** None (standalone)
 
-**Frontend Medium Issues:**
-
-**MEDIUM-F1: Complex HeroCarousel Initialization**
-- **Cause:** Multiple nested effects and timers in one component
-- **Impact:** Difficult to debug, potential memory leaks
-- **Dependencies:** Component architecture cluster (Cluster G)
-- **Related:** HIGH-F3, Cluster G components
-
-**MEDIUM-F2: Silent API Failures in Sidebars**
-- **Cause:** Error catch only logs to console, no user feedback
-- **Impact:** User doesn't know why sidebar is empty
-- **Dependencies:** Error handling cluster (Cluster E)
-- **Related:** CRITICAL-F6, HIGH-F7, Cluster E errors
-
-**MEDIUM-F3: Race Conditions in ProductSelectionPage**
-- **Cause:** Multiple simultaneous filter changes, no request cancellation
-- **Impact:** Stale data displayed, unnecessary requests
-- **Dependencies:** Component architecture cluster (Cluster G)
-- **Related:** HIGH-F2, Cluster G components
-
-**MEDIUM-F4: Confirmation Dialogs Using Browser APIs**
-- **Cause:** Same as HIGH-F5
-- **Impact:** Same as HIGH-F5
-- **Dependencies:** Same as HIGH-F5
-- **Related:** HIGH-F5 (duplicate issue)
-
-**MEDIUM-F5: SEOHead DOM Manipulation Inefficiency**
-- **Cause:** Direct DOM manipulation instead of react-helmet-async
-- **Impact:** Inefficient, not SSR-compatible
-- **Dependencies:** None (isolated improvement)
-- **Related:** None
-
-**MEDIUM-F6: Theme Validation Gaps**
-- **Cause:** localStorage theme value not validated
-- **Impact:** Invalid theme value could break UI
-- **Dependencies:** Configuration cluster (Cluster H)
-- **Related:** Cluster H configuration
-
-**MEDIUM-F7: API Response Shape Assumptions**
-- **Cause:** No validation of response shape, assumes structure
-- **Impact:** Runtime errors if API contract changes
-- **Dependencies:** Type safety cluster (Cluster C), HIGH-F1
-- **Related:** HIGH-F1, Cluster C type safety
-
-**MEDIUM-F8: Inconsistent Error Handling Patterns**
-- **Cause:** Mix of console.error, toast, silent failures
-- **Impact:** Maintenance burden, user confusion
-- **Dependencies:** Error handling cluster (Cluster E)
-- **Related:** CRITICAL-F6, HIGH-F7, Cluster E errors
-
-**MEDIUM-F9: Dual Authentication State Storage**
-- **Cause:** Token in localStorage, session in separate localStorage key
-- **Impact:** Two sources of truth, synchronization risk
-- **Dependencies:** Authentication cluster (Cluster A), State cluster (Cluster F)
-- **Related:** CRITICAL-F1, CRITICAL-F7, Cluster A, Cluster F
-
-**MEDIUM-F10: No 404 Catch-All Route**
-- **Cause:** Missing catch-all route in App.tsx
-- **Impact:** Invalid URLs show blank page
-- **Dependencies:** Component architecture cluster (Cluster G)
-- **Related:** Cluster G components
+**Phase 3 Outcomes:**
+- ✅ All MEDIUM issues resolved
+- ✅ All LOW issues resolved
+- ✅ Code duplication reduced by ~300-400 lines
+- ✅ Database load reduced by 50%
+- ✅ Clean codebase ready for future development
 
 ---
 
-### 🟢 LOW Issues (11 total)
-
-**Backend Low Issues:**
-
-**LOW-B1: CORS preflight maxAge too short**
-- **Cause:** 600s instead of 86400s
-- **Impact:** More preflight requests than necessary
-- **Dependencies:** Configuration cluster (Cluster H)
-
-**LOW-B2: Exposed file metadata in upload responses**
-- **Cause:** Response includes original filename
-- **Impact:** Minor information disclosure
-- **Dependencies:** Configuration cluster (Cluster H)
-
-**LOW-B3: Redundant Database Indexes in AuditLog**
-- **Cause:** 5 indexes with overlap
-- **Impact:** Write performance, storage overhead
-- **Dependencies:** Query optimization cluster (Cluster D)
-
-**LOW-B4: Missing Unique Constraint on RateLimit**
-- **Cause:** UUID id instead of composite key
-- **Impact:** Potential duplicates, inefficient queries
-- **Dependencies:** Query optimization cluster (Cluster D), MEDIUM-B2
-
-**LOW-B5: Error Message Leakage**
-- **Cause:** Some validation errors expose internal structure
-- **Impact:** Minor information disclosure
-- **Dependencies:** Validation cluster (Cluster B)
-
-**Frontend Low Issues:**
-
-**LOW-F1: Direct localStorage access without validation**
-- **Cause:** 10+ places directly access localStorage
-- **Impact:** No validation, potential errors
-- **Dependencies:** State management cluster (Cluster F)
-
-**LOW-F2: Weak analytics session ID generation**
-- **Cause:** Math.random() instead of crypto.randomBytes()
-- **Impact:** Predictable session IDs
-- **Dependencies:** Configuration cluster (Cluster H)
-
-**LOW-F3: tsconfig could be stricter**
-- **Cause:** Some strict checks disabled
-- **Impact:** Fewer compile-time errors caught
-- **Dependencies:** Type safety cluster (Cluster C), HIGH-F1
-
-**LOW-F4: Vite config with Chef injection**
-- **Cause:** Development code in production build config
-- **Impact:** Unnecessary code, potential security concern
-- **Dependencies:** Configuration cluster (Cluster H)
-
-**LOW-F5: Missing structured data completeness**
-- **Cause:** SEO schema could be more comprehensive
-- **Impact:** Suboptimal SEO
-- **Dependencies:** None (isolated improvement)
-
-**LOW-F6: Incomplete SEO schema**
-- **Cause:** Missing some OpenGraph tags
-- **Impact:** Suboptimal social sharing
-- **Dependencies:** None (isolated improvement)
-
----
-
-## 4. Priority Correction Strategy
-
-### Leverage-Based Fix Ordering
-
-**Current Audit Approach:** Issues listed by severity (Critical → High → Medium → Low)
-
-**Problem with Current Approach:**
-- Doesn't account for issue dependencies
-- Doesn't leverage architectural fixes that resolve multiple issues
-- Treats each issue as isolated
-- May fix downstream symptoms before upstream causes
-
-**Proposed Approach:** Fix by **architectural leverage** - which fixes resolve the most issues with minimum effort.
-
----
-
-### Phase 1 – Highest Leverage Structural Fixes (Weeks 1-3)
-
-**Priority Order by Leverage:**
-
-**1. Authentication & Session Security Architecture (Cluster A)**
-- **Leverage:** Resolves 7 issues (5 critical, 2 medium) = 15% of all issues
-- **Issues Fixed:** CRITICAL-B1, CRITICAL-B2, CRITICAL-F1, CRITICAL-F3, CRITICAL-F7, MEDIUM-F9, MEDIUM-B5
-- **Effort:** 16-24 hours
-- **Risk:** HIGH - Must not break existing authentication
-- **Why First:** Eliminates 5 of 9 critical security vulnerabilities with single architectural change
-
-**Implementation Approach:**
-1. Create `AuthenticationService` (backend)
-2. Implement httpOnly cookie authentication
-3. Remove setup endpoint entirely
-4. Environment-based initialization script
-5. JWT refresh token rotation
-6. Frontend: Remove localStorage usage
-7. API interceptor: Use cookies automatically
-8. Decode JWT on-demand for session data
-
-**Rationale:** Single architectural decision (httpOnly cookies) cascades to eliminate 7 issues. Highest return on investment.
-
----
-
-**2. Input Validation & XSS Defense Architecture (Cluster B)**
-- **Leverage:** Resolves 4 issues (2 critical, 1 high, 1 medium) = 9% of all issues
-- **Issues Fixed:** CRITICAL-F4, CRITICAL-F5, HIGH-B4, MEDIUM-B3
-- **Effort:** 8-12 hours
-- **Risk:** MEDIUM - Must not break existing validation
-- **Why Second:** Completes defense-in-depth security model with Cluster A
-
-**Implementation Approach:**
-1. Backend: Set CSP headers in Helmet
-2. Frontend: Install DOMPurify, replace regex sanitization
-3. Backend: Custom DTO validators (maxSize, maxDepth)
-4. Backend: Require at least one field in updates
-5. Test XSS vectors blocked
-
-**Rationale:** With authentication secure (Phase 1.1) and XSS defense in place (Phase 1.2), 11 of 47 issues resolved (23%). All critical security vulnerabilities except F2 and F6 resolved.
-
----
-
-**3. Error Handling & Recovery Architecture (Cluster E)**
-- **Leverage:** Resolves 6 issues (2 critical, 2 high, 2 medium) = 13% of all issues
-- **Issues Fixed:** CRITICAL-F2, CRITICAL-F6, HIGH-F7, HIGH-F8, MEDIUM-F2, MEDIUM-F8
-- **Effort:** 12-16 hours
-- **Risk:** LOW - Additive changes, doesn't break existing
-- **Why Third:** Eliminates last 2 critical issues, improves stability dramatically
-
-**Implementation Approach:**
-1. Error boundaries at route, layout, component levels
-2. API interceptor: React Router navigate instead of window.location
-3. State preservation on 401 redirect
-4. Promise.allSettled instead of Promise.all
-5. Centralized ErrorService
-6. Consistent error UI patterns
-7. Replace silent failures with user notifications
-
-**Rationale:** After security (Phase 1.1-1.2), stability is next priority. Prevents cascading failures and state loss. All 9 critical issues now resolved.
-
----
-
-**Phase 1 Summary:**
-- **Total Issues Resolved:** 17 of 47 (36%)
-- **Critical Issues Resolved:** 9 of 9 (100%)
-- **Total Effort:** 36-52 hours (1.5-2 weeks with 24 hours/week)
-- **Risk Reduction:** CRITICAL → LOW
-- **Outcome:** Application is now **security-sound** and **stability-improved**
-
----
-
-### Phase 2 – Secondary Structural Corrections (Weeks 4-6)
-
-**Priority Order by Leverage:**
-
-**4. Data Query & Performance Architecture (Cluster D)**
-- **Leverage:** Resolves 7 issues (3 high, 2 medium, 2 low) = 15% of all issues
-- **Issues Fixed:** HIGH-B1, HIGH-B2, HIGH-B3, MEDIUM-B1, MEDIUM-B2, LOW-B3, LOW-B4
-- **Effort:** 16-24 hours
-- **Risk:** MEDIUM - Database changes require careful testing
-- **Why Fourth:** With security/stability fixed, performance is next bottleneck
-
-**Implementation Approach:**
-1. Analytics: Prisma groupBy + single product query
-2. Product cache: Validate status before returning
-3. Cache invalidation: Targeted to product ID
-4. Circular check: MAX_DEPTH limit + batch query
-5. Rate limiting: Move to Redis or in-memory
-6. Database: Remove redundant indexes, add composite indexes
-7. RateLimit: Restructure with composite primary key
-
-**Rationale:** Enables horizontal scaling. Without these fixes, application doesn't scale past ~1M analytics events or ~100 concurrent users.
-
----
-
-**5. Type Safety & Contract Enforcement (Cluster C)**
-- **Leverage:** Resolves 5 issues (1 high, 2 medium, 2 low) = 11% of all issues
-- **Issues Fixed:** HIGH-F1, HIGH-B4, MEDIUM-F7, MEDIUM-B3, LOW-F3
-- **Effort:** 12-16 hours
-- **Risk:** LOW - Additive type definitions, doesn't break existing
-- **Why Fifth:** Prevents entire class of runtime errors going forward
-
-**Implementation Approach:**
-1. Create shared `types/` package
-2. Define Product, Category, UseCase interfaces
-3. Replace all `any` types (8+ locations)
-4. Backend: Custom DTO validators
-5. Enable all tsconfig strict settings
-6. Optional: Generate OpenAPI schema from DTOs
-
-**Rationale:** Type safety prevents bugs at compile-time instead of runtime. Improves refactoring confidence and IDE experience.
-
----
-
-**6. State Management & Data Flow Architecture (Cluster F)**
-- **Leverage:** Resolves 5 issues (1 high, 2 medium, 2 low) = 11% of all issues
-- **Issues Fixed:** HIGH-F2, HIGH-B2, MEDIUM-F9, MEDIUM-B1, LOW-F1
-- **Effort:** 12-16 hours
-- **Risk:** MEDIUM - Refactoring existing state access patterns
-- **Why Sixth:** Eliminates code duplication and state synchronization issues
-
-**Implementation Approach:**
-1. Create QueryBuilder service (eliminates HIGH-F2 duplication)
-2. Create StateManager for cache consistency (helps HIGH-B2)
-3. AuthService already created in Phase 1 (fixes MEDIUM-F9)
-4. Cache tracking enables targeted invalidation (fixes MEDIUM-B1)
-5. StorageService wraps localStorage (fixes LOW-F1)
-
-**Rationale:** With types in place (Phase 2.5), state management abstraction prevents misuse and enables reusability.
-
----
-
-**Phase 2 Summary:**
-- **Total Issues Resolved:** 17 additional (34 total of 47 = 72%)
-- **High Issues Resolved:** 5 additional (9 total of 12 = 75%)
-- **Total Effort:** 40-56 hours (2-3 weeks with 20 hours/week)
-- **Risk Reduction:** Now production-ready for moderate scale
-- **Outcome:** Application is now **performant** and **maintainable**
-
----
-
-### Phase 3 – Stabilization & Hardening (Weeks 7-9)
-
-**Priority Order by Leverage:**
-
-**7. Component Architecture & Code Organization (Cluster G)**
-- **Leverage:** Resolves 7 issues (3 high, 4 medium) = 15% of all issues
-- **Issues Fixed:** HIGH-F2, HIGH-F3, HIGH-F5, MEDIUM-F1, MEDIUM-F3, MEDIUM-F4, MEDIUM-F10
-- **Effort:** 16-24 hours
-- **Risk:** LOW - Refactoring existing components
-- **Note:** HIGH-F2 already resolved in Phase 2.6 (QueryBuilder)
-
-**Implementation Approach:**
-1. QueryBuilder already created (Phase 2.6) - fixes HIGH-F2
-2. Extract useCarousel hook - fixes HIGH-F3 complexity
-3. Create ConfirmDialog component - fixes HIGH-F5, MEDIUM-F4
-4. Refactor HeroCarousel - fixes MEDIUM-F1
-5. Add request cancellation - fixes MEDIUM-F3
-6. Add 404 page route - fixes MEDIUM-F10
-
-**Rationale:** With underlying architecture solid (Phases 1-2), component-level refactoring is safe and improves maintainability.
-
----
-
-**8. Form Handling & User Input Architecture (Cluster I)**
-- **Leverage:** Resolves 3 issues (2 high, 1 medium) = 6% of all issues
-- **Issues Fixed:** HIGH-F5, HIGH-F6, MEDIUM-B3
-- **Effort:** 8-12 hours
-- **Risk:** LOW - Additive form library
-- **Note:** HIGH-F5 already resolved in Phase 3.7 (ConfirmDialog)
-
-**Implementation Approach:**
-1. Install react-hook-form + zod
-2. Create form validation schemas
-3. ConfirmDialog already created (Phase 3.7) - fixes HIGH-F5
-4. Client-side validation prevents empty updates - fixes MEDIUM-B3
-5. Inline error feedback
-
-**Rationale:** Improves UX significantly. With ConfirmDialog from Phase 3.7, form architecture completes admin panel polish.
-
----
-
-**9. Development Experience & Configuration (Cluster H)**
-- **Leverage:** Resolves 7 issues (5 medium, 2 low) = 15% of all issues
-- **Issues Fixed:** MEDIUM-B4, MEDIUM-B5, MEDIUM-F6, LOW-B1, LOW-B2, LOW-F2, LOW-F4
-- **Effort:** 8-12 hours
-- **Risk:** LOW - Mostly configuration changes
-- **Note:** MEDIUM-B5 already resolved in Phase 1.1 (Auth architecture)
-
-**Implementation Approach:**
-1. Environment schema validation (zod)
-2. Separate AdminController from ProductsController - fixes MEDIUM-B4
-3. JWT_EXPIRATION already fixed (Phase 1.1) - fixes MEDIUM-B5
-4. Theme validator - fixes MEDIUM-F6
-5. CORS_MAX_AGE from environment - fixes LOW-B1
-6. Upload response cleaned - fixes LOW-B2
-7. crypto.randomBytes for session IDs - fixes LOW-F2
-8. Chef injection feature-flagged - fixes LOW-F4
-
-**Rationale:** Polish and configuration hardening. Mostly low-hanging fruit now that architecture is solid.
-
----
-
-**Phase 3 Summary:**
-- **Total Issues Resolved:** 13 additional (but 4 already resolved in earlier phases)
-- **Net New Resolutions:** 9 additional (43 total of 47 = 91%)
-- **Total Effort:** 32-48 hours (2-3 weeks with 16 hours/week)
-- **Risk Reduction:** Production-ready for high scale
-- **Outcome:** Application is now **production-hardened** and **polished**
-
----
-
-### Phase 4 – Cleanup & Refinement (Weeks 10-12)
-
-**10. Remaining Low-Priority Issues**
-- **Leverage:** Resolves 4 remaining issues = 9% of all issues
-- **Issues Fixed:** MEDIUM-F5, LOW-F5, LOW-F6, LOW-B5
-- **Effort:** 4-8 hours
-- **Risk:** MINIMAL
-
-**Implementation Approach:**
-1. Install react-helmet-async - fixes MEDIUM-F5
-2. Enhance SEO structured data - fixes LOW-F5
-3. Add missing OpenGraph tags - fixes LOW-F6
-4. Review error messages for leakage - fixes LOW-B5
-
-**Rationale:** Non-critical improvements. Can be done incrementally or deferred.
-
----
-
-**Phase 4 Summary:**
-- **Total Issues Resolved:** 47 of 47 (100%)
-- **Total Effort:** 4-8 hours (1 week with 8 hours/week)
-- **Outcome:** Application is **fully remediated**
-
----
-
-### Overall Remediation Timeline
-
-| Phase | Weeks | Effort | Issues Resolved | Cumulative % |
-|-------|-------|--------|-----------------|--------------|
-| Phase 1 | 1-3 | 36-52h | 17 issues | 36% |
-| Phase 2 | 4-6 | 40-56h | 17 issues | 72% |
-| Phase 3 | 7-9 | 32-48h | 9 issues | 91% |
-| Phase 4 | 10-12 | 4-8h | 4 issues | 100% |
-| **TOTAL** | **12 weeks** | **112-164h** | **47 issues** | **100%** |
-
-**Key Milestones:**
-- **Week 3:** All critical security issues resolved (100% of critical)
-- **Week 6:** Performance and type safety in place (75% of high priority)
-- **Week 9:** Production-hardened and polished (91% of all issues)
-- **Week 12:** Fully remediated (100% of all issues)
+### Summary: Leverage-Based Fix Strategy
+
+| Phase | Time | Issues Resolved | Architectural Impact | Risk | Priority |
+|-------|------|-----------------|---------------------|------|----------|
+| **Phase 1** | 8-12h | 6 HIGH/MEDIUM | Validation + Cache + Query patterns | LOW-MED | IMMEDIATE |
+| **Phase 2** | 10-14h | 3 HIGH | Type safety + Error handling | MEDIUM | Week 1 |
+| **Phase 3** | 12-16h | 7 MEDIUM/LOW | Data fetching + Infrastructure cleanup | LOW | Week 2-3 |
+
+**Total:** 30-42 hours to resolve all 16 issues
 
 ---
 
 ## 5. Master Prompt Grouping Strategy
 
-### Master Prompt 1: Authentication & Session Security Architecture
+### Master Prompt 1: "Backend Input Validation Hardening"
 
-**Target Cluster(s):** Cluster A (Authentication & Session Security Failures)
+**Target Cluster(s):** Cluster B (Input Validation Architecture Gaps)
 
 **Issue IDs Covered:**
-- CRITICAL-B1: Hardcoded Admin Credentials
-- CRITICAL-B2: Insecure Setup Endpoint
-- CRITICAL-F1: Token Storage in localStorage (XSS)
-- CRITICAL-F3: Setup Endpoint Exposes Credentials
-- CRITICAL-F7: Session Stored in Plain JSON
-- MEDIUM-F9: Dual Authentication State Storage
-- MEDIUM-B5: JWT Expiration Too Long
+- HIGH-B4 (Inadequate Validation in DTOs)
+- HIGH-B3 (Circular Reference Check Inefficiency - depth limit)
+- MEDIUM-B3 (Missing Input Validation in Update Endpoints)
+
+**Scope:**
+Create comprehensive custom validation decorator library and apply to all DTOs with input boundary risks.
 
 **Expected Resolution Impact:**
-- **Issues Resolved:** 7 (5 critical, 2 medium)
-- **Percentage of Total:** 15%
-- **Security Posture:** Eliminates 56% of critical security vulnerabilities (5 of 9)
-- **Downstream Effects:** Makes CRITICAL-F4, CRITICAL-F5 exploitation harder (defense-in-depth)
+- ✅ Prevents DoS attacks via oversized metadata payloads
+- ✅ Prevents DoS attacks via deep category hierarchies
+- ✅ Enforces API contracts (no empty update requests)
+- ✅ Establishes validation pattern for future DTOs
 
-**Technical Approach:**
-1. **Backend Changes:**
-   - Implement httpOnly cookie authentication in NestJS
-   - Remove hardcoded credentials, add environment-based initialization
-   - Delete setup-first-admin endpoint entirely
-   - Implement JWT refresh token rotation (15-minute access tokens)
-   - Update CORS configuration for credentials
-
-2. **Frontend Changes:**
-   - Remove localStorage token storage
-   - Remove API interceptor token injection (cookies automatic)
-   - Decode JWT on-demand for session data (no separate storage)
-   - Remove setup UI from AdminLoginPage
-
-3. **Infrastructure Changes:**
-   - Secure initialization script (CLI tool for first admin)
-   - Environment variable validation for credentials
-   - Git history scrub for exposed credentials
-
-**Risk Level:** **HIGH**
-- Breaking change to authentication flow
-- Must migrate existing sessions
-- Requires thorough testing of all authenticated flows
-- Cookie configuration must be correct (SameSite, Secure flags)
-
-**Recommended Execution Order:** **FIRST**
-- Highest security impact
-- Unblocks production deployment
-- Foundation for remaining security improvements
-
-**Testing Requirements:**
-- Login/logout flow
-- Token refresh on expiration
-- Protected route access
-- Cross-origin requests
-- Session persistence across browser restarts
-- Token theft attempt (verify httpOnly prevents access)
-
-**Rollback Plan:**
-- Keep old localStorage implementation in feature flag
-- Gradual migration with dual authentication support
-- Monitor error rates after deployment
+**Risk Level:** LOW
+**Recommended Execution Order:** 1st (Phase 1)
+**Estimated Time:** 4-5 hours
+**Structural Improvement Level:** HIGH
 
 ---
 
-### Master Prompt 2: Input Validation & XSS Defense Architecture
+### Master Prompt 2: "Backend Cache Integrity & Performance"
 
-**Target Cluster(s):** Cluster B (Input Validation & XSS Defense Architecture)
+**Target Cluster(s):** Cluster C (Cache Integrity & Invalidation Design)
 
 **Issue IDs Covered:**
-- CRITICAL-F4: CSP Meta Tags Not Enforced
-- CRITICAL-F5: Inadequate Input Sanitization
-- HIGH-B4: Inadequate Validation in DTOs
-- MEDIUM-B3: Missing Input Validation in Update Endpoints
+- HIGH-B2 (Missing NULL Checks in Product Caching)
+- MEDIUM-B1 (Cache Invalidation Over-Aggressive)
+
+**Scope:**
+Refactor cache service and products service to implement data-aware caching.
 
 **Expected Resolution Impact:**
-- **Issues Resolved:** 4 (2 critical, 1 high, 1 medium)
-- **Percentage of Total:** 9%
-- **Security Posture:** Completes defense-in-depth XSS protection
-- **Downstream Effects:** Protects authentication cookies from XSS theft (complements Master Prompt 1)
+- ✅ Prevents data leaks (unpublished products visible to public)
+- ✅ Improves cache hit rate from 60% to 80%
+- ✅ Eliminates thundering herd problem
+- ✅ Reduces database query load by 20-30%
 
-**Technical Approach:**
-1. **Backend Changes (CSP):**
-   - Remove CSP from Helmet default config
-   - Add explicit CSP header configuration
-   - Set `scriptSrc: ["'self'"]` (no unsafe-inline)
-   - Set `styleSrc: ["'self'"]` (remove unsafe-inline, use CSS files)
-   - Test that inline scripts are blocked
-
-2. **Frontend Changes (Sanitization):**
-   - Install DOMPurify library
-   - Replace `security.ts` regex sanitization with DOMPurify
-   - Sanitize all user inputs before rendering
-   - Add sanitization tests for known XSS vectors
-
-3. **Backend Changes (DTO Validation):**
-   - Create custom validators: `@MaxSize()`, `@MaxDepth()`
-   - Add to metadata fields in DTOs
-   - Validate update requests require at least one field
-   - Test with oversized/deeply-nested payloads
-
-4. **Frontend Changes (CSS):**
-   - Move inline styles to CSS classes (CSP compliance)
-   - Update Tailwind configuration if needed
-
-**Risk Level:** **MEDIUM**
-- CSP may block legitimate inline styles (test thoroughly)
-- Sanitization may break HTML content (if any)
-- DTO validation may reject currently-accepted payloads
-
-**Recommended Execution Order:** **SECOND** (after Master Prompt 1)
-- Completes security layer
-- Requires authentication to be secure first (no point defending stolen tokens)
-- Lower risk than authentication changes
-
-**Testing Requirements:**
-- XSS vector tests (script tags, event handlers, etc.)
-- CSP violation reports monitored
-- Inline styles removed or whitelisted
-- Metadata validation with 100MB payload (should reject)
-- Empty update requests (should reject)
-
-**Rollback Plan:**
-- CSP can be set to report-only mode initially
-- DOMPurify can be disabled with feature flag
-- DTO validation can be warnings instead of errors initially
+**Risk Level:** LOW-MEDIUM
+**Recommended Execution Order:** 2nd (Phase 1)
+**Estimated Time:** 3-4 hours
+**Structural Improvement Level:** HIGH
 
 ---
 
-### Master Prompt 3: Error Handling & Recovery Architecture
+### Master Prompt 3: "Backend Analytics Query Optimization"
 
-**Target Cluster(s):** Cluster E (Error Handling & Recovery Architecture)
+**Target Cluster(s):** Cluster A (Application-Layer Aggregation Anti-Pattern)
 
 **Issue IDs Covered:**
-- CRITICAL-F2: Hard Redirect on 401 Loses Application State
-- CRITICAL-F6: Promise.all Failure Cascade
-- HIGH-F7: Missing Error Boundaries at Route Level
-- HIGH-F8: Single Error Boundary Coverage
-- MEDIUM-F2: Silent API Failures in Sidebars
-- MEDIUM-F8: Inconsistent Error Handling Patterns
+- HIGH-B1 (N+1 Query Problems in Analytics Service)
+
+**Scope:**
+Refactor analytics service to use database-level aggregation instead of JavaScript.
 
 **Expected Resolution Impact:**
-- **Issues Resolved:** 6 (2 critical, 2 high, 2 medium)
-- **Percentage of Total:** 13%
-- **Stability Improvement:** Prevents catastrophic failures from propagating
-- **UX Improvement:** Users see helpful errors instead of blank screens
+- ✅ Reduces analytics dashboard load time from 800ms to ~100ms (87.5% improvement)
+- ✅ Eliminates memory overflow risk
+- ✅ Reduces database query count from 51 to 2-3 per analytics request
+- ✅ Establishes query optimization pattern
 
-**Technical Approach:**
-1. **Error Boundaries:**
-   - Create ErrorBoundary components for: Route level, Layout level, Component level
-   - Implement error recovery UI with "Try Again" and "Go Home" buttons
-   - Add error logging to ErrorService
-
-2. **API Interceptor:**
-   - Replace `window.location.href = '/admin/login'` with React Router `navigate()`
-   - Preserve state in navigation: `navigate('/admin/login', { state: { from: pathname } })`
-   - Add error context to navigation state
-
-3. **Promise Handling:**
-   - Replace `Promise.all` with `Promise.allSettled` in ProductDetailPage
-   - Handle each promise result independently
-   - Show product even if related products fail
-
-4. **Centralized Error Service:**
-   - Create `ErrorService` class
-   - Methods: `logError()`, `notifyUser()`, `reportToMonitoring()`
-   - Consistent error handling across all components
-
-5. **Silent Failures:**
-   - Replace console.error with toast notifications in sidebars
-   - Add retry buttons to error UI
-
-**Risk Level:** **LOW**
-- Additive changes (new error boundaries)
-- API interceptor change is low-risk (fallback to old behavior)
-- Promise.allSettled is backward compatible
-
-**Recommended Execution Order:** **THIRD** (after Master Prompts 1-2)
-- Security must be fixed first (errors could expose vulnerabilities)
-- Standalone improvements that don't depend on other fixes
-- High user experience impact
-
-**Testing Requirements:**
-- Trigger errors at different component levels
-- Verify error boundaries isolate failures
-- Test 401 redirect preserves form data
-- Test ProductDetailPage with failed related products API
-- Monitor error rates after deployment
-
-**Rollback Plan:**
-- Error boundaries can be disabled with feature flag
-- API interceptor can revert to window.location
-- Promise.allSettled can revert to Promise.all
+**Risk Level:** LOW
+**Recommended Execution Order:** 3rd (Phase 1)
+**Estimated Time:** 3-4 hours
+**Structural Improvement Level:** HIGH
 
 ---
 
-### Master Prompt 4: Data Query & Performance Architecture
+### Master Prompt 4: "Full-Stack Type Safety Enforcement"
 
-**Target Cluster(s):** Cluster D (Data Query & Performance Architecture)
+**Target Cluster(s):** Cluster D (Frontend Type System Erosion)
 
 **Issue IDs Covered:**
-- HIGH-B1: N+1 Query Problems in Analytics Service
-- HIGH-B2: Missing NULL Checks in Product Caching
-- HIGH-B3: Circular Reference Check Inefficiency
-- MEDIUM-B1: Cache Invalidation Over-Aggressive
-- MEDIUM-B2: Rate Limit Service Database Inefficiency
-- LOW-B3: Redundant Database Indexes in AuditLog
-- LOW-B4: Missing Unique Constraint on RateLimit
+- HIGH-B5 (Type Safety in Products Service)
+- HIGH-F1 (Type Safety Gaps - any types)
+
+**Scope:**
+Establish explicit type contracts across entire stack.
 
 **Expected Resolution Impact:**
-- **Issues Resolved:** 7 (3 high, 2 medium, 2 low)
-- **Percentage of Total:** 15%
-- **Performance Improvement:** 10x faster analytics, 95% cache hit rate
-- **Scalability:** Enables horizontal scaling and 10M+ analytics events
+- ✅ Type safety enforced across entire stack
+- ✅ Developer velocity improved (autocomplete, refactoring tools)
+- ✅ Runtime errors reduced
+- ✅ Refactoring becomes safer
 
-**Technical Approach:**
-1. **Analytics Service (N+1 Queries):**
-   - Replace manual aggregation with Prisma `groupBy`
-   - Single product query with `IN` clause
-   - Test with 1M+ events (target <100ms response)
-
-2. **Product Caching (NULL Checks):**
-   - Validate cached product status before returning
-   - If status changed, invalidate cache
-   - Add cache hit/miss metrics
-
-3. **Cache Invalidation (Over-Aggressive):**
-   - Add `productId` parameter to invalidation
-   - Only invalidate: `product:single:{productId}` and `product:latest:*`
-   - Track invalidation reasons for monitoring
-
-4. **Circular Reference Check (Inefficiency):**
-   - Add `MAX_DEPTH = 50` constant
-   - Add depth counter in while loop
-   - Throw error if depth exceeded
-   - Future: Batch query or recursive CTE
-
-5. **Rate Limiting (Database):**
-   - Evaluate: In-memory (NestJS throttler) vs Redis
-   - If in-memory: Remove database storage
-   - If Redis: Migrate to Redis with TTL
-   - Remove database cleanup query
-
-6. **Database Indexes:**
-   - Analyze AuditLog queries, remove 2-3 redundant indexes
-   - Add composite index to AnalyticsEvent: `[eventType, entityId, timestamp]`
-   - Change RateLimit primary key to composite: `[key, timestamp]`
-
-**Risk Level:** **MEDIUM**
-- Database migrations require testing
-- Analytics queries must maintain same results
-- Cache changes could cause inconsistency if not careful
-
-**Recommended Execution Order:** **FOURTH** (after Master Prompts 1-3)
-- Security and stability must be fixed first
-- Performance optimization can be staged (analytics first, then caching, etc.)
-- Requires load testing to verify improvements
-
-**Testing Requirements:**
-- Analytics query results match old implementation
-- Load test with 1M events (target <100ms)
-- Cache hit rate monitoring (target 80%+)
-- Circular reference with 50-level hierarchy
-- Rate limiting behavior under load
-- Database query analysis (EXPLAIN ANALYZE)
-
-**Rollback Plan:**
-- Analytics queries can use feature flag (old vs new)
-- Cache validation can be disabled
-- Indexes can be added/removed without downtime
-- Rate limiting can fall back to database
+**Risk Level:** MEDIUM
+**Recommended Execution Order:** 4th (Phase 2)
+**Estimated Time:** 6-8 hours
+**Structural Improvement Level:** HIGH
 
 ---
 
-### Master Prompt 5: Type Safety & Contract Enforcement
+### Master Prompt 5: "Frontend Error Handling Standardization"
 
-**Target Cluster(s):** Cluster C (Type Safety & Contract Enforcement)
+**Target Cluster(s):** Cluster E (Frontend Error Handling Fragmentation)
 
 **Issue IDs Covered:**
-- HIGH-F1: Type Safety Gaps (`any` types in 8+ locations)
-- HIGH-B4: Inadequate Validation in DTOs (already in Master Prompt 2, but type aspect here)
-- MEDIUM-F7: API Response Shape Assumptions
-- MEDIUM-B3: Missing Input Validation in Update Endpoints (already in Master Prompt 2)
-- LOW-F3: tsconfig could be stricter
+- HIGH-F2 (Error Handling Improvements)
+
+**Scope:**
+Standardize error handling across entire frontend.
 
 **Expected Resolution Impact:**
-- **Issues Resolved:** 5 (1 high, 2 medium, 2 low) *Note: 2 issues overlap with Master Prompt 2*
-- **Percentage of Total:** 11%
-- **Maintainability:** Compile-time error catching instead of runtime
-- **Refactoring:** Safe refactoring with type checking
+- ✅ Consistent user experience
+- ✅ Centralized error logging
+- ✅ Better error recovery
+- ✅ Reduced user frustration
 
-**Technical Approach:**
-1. **Shared Types Package:**
-   - Create `types/` directory in project root
-   - Define interfaces: `Product`, `Category`, `UseCase`, `AdminUser`
-   - Include relation types: `ProductWithRelations`, etc.
-   - Export from central index
-
-2. **Frontend Type Replacement:**
-   - Replace `any` in ProductCard, ProductGrid, HeroCarousel, Sidebars, AdminDashboard, ProductDetailPage
-   - Update component props to use proper types
-   - Add type guards where needed
-
-3. **Backend DTO Enhancement:**
-   - Already covered in Master Prompt 2 (custom validators)
-   - Add proper typing to metadata fields
-   - Use class-transformer for nested types
-
-4. **API Contract Validation:**
-   - Add runtime validation of API responses (zod or yup)
-   - Validate response shape matches expected type
-   - Graceful degradation if shape mismatch
-
-5. **TypeScript Configuration:**
-   - Enable: `strictNullChecks`, `noUncheckedIndexedAccess`, `noImplicitAny`
-   - Fix all new type errors
-   - Update tsconfig.json
-
-**Risk Level:** **LOW**
-- Type definitions are additive
-- Can be done incrementally (one component at a time)
-- TypeScript errors caught before runtime
-
-**Recommended Execution Order:** **FIFTH** (after Master Prompts 1-4)
-- Can be done in parallel with Master Prompt 6
-- Lower priority than security/performance
-- Enables safer refactoring for future work
-
-**Testing Requirements:**
-- All TypeScript errors resolved
-- No runtime type errors in console
-- API contract validation catches mismatches
-- Type checking in CI pipeline
-
-**Rollback Plan:**
-- Types can be added incrementally
-- Strict tsconfig settings can be enabled one at a time
-- Minimal risk (compile-time only)
+**Risk Level:** LOW
+**Recommended Execution Order:** 5th (Phase 2)
+**Estimated Time:** 3-4 hours
+**Structural Improvement Level:** MEDIUM
 
 ---
 
-### Master Prompt 6: State Management & Data Flow Architecture
+### Master Prompt 6: "Frontend Data Fetching Abstraction"
 
-**Target Cluster(s):** Cluster F (State Management & Data Flow Architecture)
+**Target Cluster(s):** Cluster F (Frontend Data Fetching Duplication)
 
 **Issue IDs Covered:**
-- HIGH-F2: Code Duplication in ProductGrid
-- HIGH-B2: Missing NULL Checks in Product Caching (overlap with Master Prompt 4)
-- MEDIUM-F9: Dual Authentication State Storage (overlap with Master Prompt 1)
-- MEDIUM-B1: Cache Invalidation Over-Aggressive (overlap with Master Prompt 4)
-- LOW-F1: Direct localStorage access without validation
+- MEDIUM-F1 (Code Duplication in ProductGrid)
+- MEDIUM-F2 (Admin Dashboard Data Refresh)
+- MEDIUM-F3 (Image Loading States)
+
+**Scope:**
+Create custom hooks library for all data fetching patterns.
 
 **Expected Resolution Impact:**
-- **Issues Resolved:** 5 (1 high, 2 medium, 2 low) *Note: 3 issues overlap with other prompts*
-- **Net New Resolutions:** 2 (HIGH-F2, LOW-F1)
-- **Percentage of Total:** 4% (net new)
-- **Maintainability:** Eliminates code duplication, centralizes state logic
+- ✅ Reduces code duplication by ~300-400 lines
+- ✅ Consistent loading states across app
+- ✅ Enables auto-refresh for dashboard
+- ✅ Establishes data fetching pattern
 
-**Technical Approach:**
-1. **Query Builder Service:**
-   - Create `ProductQueryBuilder` class
-   - Method: `buildQuery(params: { searchQuery?, categoryId?, useCaseId?, sortBy?, page, pageSize })`
-   - Returns: `{ endpoint: string, params: object }`
-   - Eliminates ProductGrid duplication (8 call sites → 1 function)
-
-2. **State Manager:**
-   - Create `StateManager` service
-   - Manages cache consistency (helps HIGH-B2 from Prompt 4)
-   - Validates cached state before returning
-   - Already covered by Master Prompt 4 (cache validation)
-
-3. **Auth Service:**
-   - Already covered by Master Prompt 1 (authentication)
-   - Fixes MEDIUM-F9 (dual storage)
-
-4. **Cache Tracking:**
-   - Already covered by Master Prompt 4 (targeted invalidation)
-   - Fixes MEDIUM-B1
-
-5. **Storage Service:**
-   - Create `StorageService` wrapper around localStorage
-   - Methods: `get<T>(key): T | null`, `set<T>(key, value: T): void`
-   - Validates types and handles JSON parsing
-   - Fixes LOW-F1 (direct access)
-
-**Risk Level:** **MEDIUM**
-- QueryBuilder requires refactoring ProductGrid
-- StorageService requires updating 10+ localStorage call sites
-- State consistency must be maintained during migration
-
-**Recommended Execution Order:** **SIXTH** (after Master Prompts 1-5)
-- Can be done in parallel with Master Prompt 5
-- Depends on Master Prompts 1 and 4 (auth and cache)
-- Lower priority than security/performance
-
-**Testing Requirements:**
-- ProductGrid works with all filter combinations
-- Pagination works correctly
-- localStorage access goes through StorageService
-- No direct localStorage calls remain
-
-**Rollback Plan:**
-- QueryBuilder can coexist with old logic (feature flag)
-- StorageService can be bypassed if issues found
-- Incremental migration possible
+**Risk Level:** LOW-MEDIUM
+**Recommended Execution Order:** 6th (Phase 3)
+**Estimated Time:** 6-8 hours
+**Structural Improvement Level:** HIGH
 
 ---
 
-### Master Prompt 7: Component Architecture & Code Organization
+### Master Prompt 7: "Backend Infrastructure Modernization"
 
-**Target Cluster(s):** Cluster G (Component Architecture & Code Organization)
+**Target Cluster(s):** Cluster G (Backend Infrastructure Cleanup)
 
 **Issue IDs Covered:**
-- HIGH-F2: Code Duplication in ProductGrid (overlap with Master Prompt 6)
-- HIGH-F3: Complex State Management in ProductDetailPage
-- HIGH-F5: Browser confirm() Dialogs
-- MEDIUM-F1: Complex HeroCarousel Initialization
-- MEDIUM-F3: Race Conditions in ProductSelectionPage
-- MEDIUM-F4: Confirmation Dialogs Using Browser APIs (same as HIGH-F5)
-- MEDIUM-F10: No 404 Catch-All Route
+- MEDIUM-B2 (Rate Limit Service Database Inefficiency)
+- MEDIUM-B4 (Inconsistent Route Protection Patterns)
+- LOW (Backend) - Remove deprecated RateLimit table
+
+**Scope:**
+Clean up deprecated infrastructure and modernize route structure.
 
 **Expected Resolution Impact:**
-- **Issues Resolved:** 7 (3 high, 4 medium) *Note: HIGH-F2 overlap with Prompt 6, F4/F5 duplicate*
-- **Net New Resolutions:** 5 issues
-- **Percentage of Total:** 11% (net new)
-- **Maintainability:** Components become testable and reusable
+- ✅ Reduces database load by 50%
+- ✅ Clear API namespace separation
+- ✅ Removes ~500 lines of deprecated code
+- ✅ Improves API discoverability
 
-**Technical Approach:**
-1. **Query Builder:**
-   - Already covered by Master Prompt 6
-   - Fixes HIGH-F2
-
-2. **useCarousel Hook:**
-   - Extract carousel logic from ProductDetailPage (265 lines → ~150 lines)
-   - Hook manages: currentIndex, next, prev, autoplay
-   - Fixes HIGH-F3 complexity
-   - Also simplifies HeroCarousel (MEDIUM-F1)
-
-3. **ConfirmDialog Component:**
-   - Create reusable ConfirmDialog component
-   - Props: title, message, onConfirm, onCancel
-   - Replace browser `confirm()` calls (3+ locations)
-   - Fixes HIGH-F5, MEDIUM-F4
-
-4. **useQuery Hook:**
-   - Create useQuery hook with AbortController
-   - Cancels in-flight requests on unmount or new request
-   - Fixes MEDIUM-F3 race conditions
-
-5. **404 Page:**
-   - Create NotFoundPage component
-   - Add catch-all route: `<Route path="*" element={<NotFoundPage />} />`
-   - Fixes MEDIUM-F10
-
-**Risk Level:** **LOW**
-- Component refactoring is low-risk (isolated changes)
-- Hooks are additive (don't break existing)
-- ConfirmDialog improves UX
-
-**Recommended Execution Order:** **SEVENTH** (after Master Prompts 1-6)
-- Can be done incrementally (one component at a time)
-- Lower priority than security/performance/state
-- High UX improvement
-
-**Testing Requirements:**
-- Carousel works in ProductDetailPage and HeroCarousel
-- ConfirmDialog shows and functions correctly
-- Race conditions eliminated (test rapid filter changes)
-- 404 page displays for invalid URLs
-
-**Rollback Plan:**
-- Hooks can coexist with old logic
-- ConfirmDialog can be feature-flagged
-- Minimal risk (UI changes only)
+**Risk Level:** MEDIUM
+**Recommended Execution Order:** 7th (Phase 3)
+**Estimated Time:** 7-9 hours
+**Structural Improvement Level:** MEDIUM
 
 ---
 
-### Master Prompt 8: Form Handling & User Input Architecture
+### Master Prompt 8: "Codebase Polish & Developer Experience"
 
-**Target Cluster(s):** Cluster I (Form Handling & User Input Architecture)
-
-**Issue IDs Covered:**
-- HIGH-F5: Browser confirm() Dialogs (overlap with Master Prompt 7)
-- HIGH-F6: Form Validation Missing
-- MEDIUM-B3: Missing Input Validation in Update Endpoints (overlap with Master Prompt 2)
-
-**Expected Resolution Impact:**
-- **Issues Resolved:** 3 (2 high, 1 medium) *Note: 2 issues overlap with other prompts*
-- **Net New Resolutions:** 1 (HIGH-F6)
-- **Percentage of Total:** 2% (net new)
-- **UX Improvement:** Inline validation, better error feedback
-
-**Technical Approach:**
-1. **ConfirmDialog:**
-   - Already covered by Master Prompt 7
-   - Fixes HIGH-F5
-
-2. **Form Validation:**
-   - Install react-hook-form + zod
-   - Create validation schemas for each admin form
-   - Add inline error messages
-   - Client-side validation prevents empty updates (helps MEDIUM-B3 from Prompt 2)
-   - Fixes HIGH-F6
-
-3. **Update Endpoint Validation:**
-   - Already covered by Master Prompt 2 (backend validation)
-   - Fixes MEDIUM-B3
-
-**Risk Level:** **LOW**
-- Form library is additive (doesn't break existing)
-- Validation improves UX without breaking functionality
-- Can be added incrementally (one form at a time)
-
-**Recommended Execution Order:** **EIGHTH** (after Master Prompts 1-7)
-- Depends on Master Prompt 7 (ConfirmDialog)
-- Depends on Master Prompt 2 (backend validation)
-- Lower priority (UX improvement, not functional fix)
-
-**Testing Requirements:**
-- Forms validate before submission
-- Inline errors display correctly
-- Empty submissions prevented
-- Backend validation still works (defense-in-depth)
-
-**Rollback Plan:**
-- Form validation can be disabled
-- Forms still work without react-hook-form
-- Minimal risk
-
----
-
-### Master Prompt 9: Configuration & Environment Architecture
-
-**Target Cluster(s):** Cluster H (Development Experience & Configuration)
+**Target Cluster(s):** Cluster H (Frontend Polish & Developer Experience)
 
 **Issue IDs Covered:**
-- MEDIUM-B4: Inconsistent Route Protection Patterns
-- MEDIUM-B5: JWT Expiration Too Long (overlap with Master Prompt 1)
-- MEDIUM-F6: Theme Validation Gaps
-- LOW-B1: CORS preflight maxAge too short
-- LOW-B2: Exposed file metadata in upload responses
-- LOW-F2: Weak analytics session ID generation
-- LOW-F4: Vite config with Chef injection
+- LOW-F1 (Console Warnings in Development)
+- LOW (Frontend) - Remove unused ACCESS_TOKEN storage key
+
+**Scope:**
+Systematic code hygiene cleanup.
 
 **Expected Resolution Impact:**
-- **Issues Resolved:** 7 (5 medium, 2 low) *Note: MEDIUM-B5 overlap with Prompt 1*
-- **Net New Resolutions:** 6 issues
-- **Percentage of Total:** 13% (net new)
-- **Quality:** Configuration centralized and validated
+- ✅ Clean console output during development
+- ✅ Removes code confusion
+- ✅ Improved developer experience
 
-**Technical Approach:**
-1. **Environment Validation:**
-   - Install zod for schema validation
-   - Create env schema (JWT_SECRET, JWT_EXPIRATION, CORS_ORIGIN, etc.)
-   - Validate on startup, fail fast if invalid
-
-2. **Route Organization:**
-   - Separate AdminController from ProductsController
-   - Admin routes: `/api/admin/products/*`
-   - Public routes: `/api/products/*`
-   - Fixes MEDIUM-B4
-
-3. **JWT Expiration:**
-   - Already covered by Master Prompt 1 (15-minute tokens)
-   - Fixes MEDIUM-B5
-
-4. **Theme Validation:**
-   - Create theme validator function
-   - Validate localStorage value before applying
-   - Fixes MEDIUM-F6
-
-5. **CORS Configuration:**
-   - Add CORS_MAX_AGE environment variable (default 86400)
-   - Fixes LOW-B1
-
-6. **Upload Response:**
-   - Remove original filename from response
-   - Only return: path, mimetype, size
-   - Fixes LOW-B2
-
-7. **Session ID Generation:**
-   - Replace Math.random() with crypto.randomBytes(16).toString('hex')
-   - Fixes LOW-F2
-
-8. **Vite Configuration:**
-   - Feature-flag Chef injection (process.env.ENABLE_CHEF === 'true')
-   - Fixes LOW-F4
-
-**Risk Level:** **LOW**
-- Mostly configuration changes
-- Environment validation improves reliability
-- Minimal code changes
-
-**Recommended Execution Order:** **NINTH** (after Master Prompts 1-8)
-- Can be done in parallel with other prompts
-- Lower priority (polish, not functional fixes)
-- Quick wins
-
-**Testing Requirements:**
-- Environment validation catches missing/invalid vars
-- Admin routes properly separated
-- Theme validation prevents invalid values
-- Session IDs are cryptographically random
-
-**Rollback Plan:**
-- Environment validation can be disabled
-- Route separation can be reverted
-- Minimal risk (configuration only)
-
----
-
-### Master Prompt 10: Final Cleanup & Refinement
-
-**Target Cluster(s):** Remaining low-priority issues
-
-**Issue IDs Covered:**
-- MEDIUM-F5: SEOHead DOM Manipulation Inefficiency
-- LOW-F5: Missing structured data completeness
-- LOW-F6: Incomplete SEO schema
-- LOW-B5: Error Message Leakage
-
-**Expected Resolution Impact:**
-- **Issues Resolved:** 4 (1 medium, 3 low)
-- **Percentage of Total:** 9%
-- **Quality:** SEO improvements, security polish
-
-**Technical Approach:**
-1. **SEOHead Refactor:**
-   - Install react-helmet-async
-   - Replace direct DOM manipulation
-   - Fixes MEDIUM-F5
-
-2. **SEO Enhancements:**
-   - Add complete structured data (Product, BreadcrumbList, Organization)
-   - Add missing OpenGraph tags (og:type, og:site_name, article:published_time)
-   - Fixes LOW-F5, LOW-F6
-
-3. **Error Message Review:**
-   - Audit validation error messages
-   - Remove internal structure references
-   - Fixes LOW-B5
-
-**Risk Level:** **MINIMAL**
-- SEO changes don't affect functionality
-- Error message changes improve security
-
-**Recommended Execution Order:** **TENTH** (final cleanup)
-- Lowest priority
-- Can be done incrementally
-- Quick wins for SEO
-
-**Testing Requirements:**
-- SEO meta tags render correctly
-- Structured data validates (Google Rich Results Test)
-- Error messages don't expose internals
-
-**Rollback Plan:**
-- SEO changes can be reverted
-- Minimal risk
+**Risk Level:** VERY LOW
+**Recommended Execution Order:** 8th (Phase 3)
+**Estimated Time:** 1-2 hours
+**Structural Improvement Level:** LOW
 
 ---
 
 ## Master Prompt Execution Summary
 
-| Prompt # | Name | Clusters | Issues | Effort | Order | Priority |
-|----------|------|----------|--------|--------|-------|----------|
-| **1** | Auth & Session Security | A | 7 | 16-24h | FIRST | CRITICAL |
-| **2** | Input Validation & XSS | B | 4 | 8-12h | SECOND | CRITICAL |
-| **3** | Error Handling & Recovery | E | 6 | 12-16h | THIRD | CRITICAL |
-| **4** | Query & Performance | D | 7 | 16-24h | FOURTH | HIGH |
-| **5** | Type Safety & Contracts | C | 5 | 12-16h | FIFTH | HIGH |
-| **6** | State Management | F | 5 | 12-16h | SIXTH | HIGH |
-| **7** | Component Architecture | G | 7 | 16-24h | SEVENTH | MEDIUM |
-| **8** | Form Handling | I | 3 | 8-12h | EIGHTH | MEDIUM |
-| **9** | Configuration | H | 7 | 8-12h | NINTH | MEDIUM |
-| **10** | Final Cleanup | - | 4 | 4-8h | TENTH | LOW |
+| Prompt # | Name | Issues | Time | Phase | Impact | Risk | Order |
+|----------|------|--------|------|-------|--------|------|-------|
+| **1** | Backend Input Validation Hardening | 3 | 4-5h | Phase 1 | HIGH | LOW | 1st |
+| **2** | Backend Cache Integrity & Performance | 2 | 3-4h | Phase 1 | HIGH | LOW-MED | 2nd |
+| **3** | Backend Analytics Query Optimization | 1 | 3-4h | Phase 1 | HIGH | LOW | 3rd |
+| **4** | Full-Stack Type Safety Enforcement | 2 | 6-8h | Phase 2 | HIGH | MEDIUM | 4th |
+| **5** | Frontend Error Handling Standardization | 1 | 3-4h | Phase 2 | MEDIUM | LOW | 5th |
+| **6** | Frontend Data Fetching Abstraction | 3 | 6-8h | Phase 3 | HIGH | LOW-MED | 6th |
+| **7** | Backend Infrastructure Modernization | 3 | 7-9h | Phase 3 | MEDIUM | MEDIUM | 7th |
+| **8** | Codebase Polish & Developer Experience | 2 | 1-2h | Phase 3 | LOW | VERY LOW | 8th |
 
-**Total Effort:** 112-164 hours across 10 master prompts
-**Total Issues:** 47 issues (with overlaps accounted for)
-
-**Critical Path (Production Blocking):**
-1. Master Prompt 1 (Auth) → 2 (XSS) → 3 (Errors) = **36-52 hours**
-2. After these 3, application is security-sound and stable (ALL 9 critical issues resolved)
-
-**Recommended Approach:**
-- **Sprint 1 (Weeks 1-3):** Master Prompts 1-3 (security & stability)
-- **Sprint 2 (Weeks 4-6):** Master Prompts 4-6 (performance & architecture)
-- **Sprint 3 (Weeks 7-9):** Master Prompts 7-9 (polish & configuration)
-- **Sprint 4 (Weeks 10-12):** Master Prompt 10 + testing + documentation
+**Total Time:** 34-44 hours
+**Total Issues Resolved:** 16 issues
 
 ---
 
-**END OF ISSUE LINKAGE & ROOT CAUSE MAPPING**
+**End of Issue Linkage & Root Cause Mapping Analysis**
 
-**Document Version:** 1.0
-**Analysis Completed:** February 14, 2026
-**Next Action:** Execute Master Prompts in recommended order
+*This analysis is based on the verified current state of the ProdView codebase as documented in the technical audit dated February 15, 2026. All issue identifiers reference the exact issues documented in mdFiles/analysis/projectAudit.md.*
