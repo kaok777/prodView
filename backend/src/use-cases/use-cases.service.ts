@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CacheService } from '../common/cache.service';
+import { validateAtLeastOneField } from '../common/validators/require-at-least-one.validator';
 
 @Injectable()
 export class UseCasesService {
@@ -68,6 +69,9 @@ export class UseCasesService {
       name?: string;
     },
   ) {
+    // Validate at least one field is provided
+    validateAtLeastOneField(data, ['name']);
+
     const existingUseCase = await this.prisma.useCase.findUnique({
       where: { id: useCaseId },
     });

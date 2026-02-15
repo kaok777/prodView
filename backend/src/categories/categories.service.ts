@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../common/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CacheService } from '../common/cache.service';
+import { validateAtLeastOneField } from '../common/validators/require-at-least-one.validator';
 
 @Injectable()
 export class CategoriesService {
@@ -83,6 +84,9 @@ export class CategoriesService {
       parentCategoryId?: string;
     },
   ) {
+    // Validate at least one field is provided
+    validateAtLeastOneField(data, ['name', 'parentCategoryId']);
+
     const existingCategory = await this.prisma.category.findUnique({
       where: { id: categoryId },
     });

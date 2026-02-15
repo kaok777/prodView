@@ -1,5 +1,6 @@
 import { IsString, IsUUID, IsOptional, IsEnum, MaxLength, IsObject, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { MaxJsonSize, MaxObjectDepth, MaxObjectKeys } from '../../common/validators/metadata.validator';
 
 export enum EventType {
   PRODUCT_VIEW = 'product_view',
@@ -24,6 +25,9 @@ export class TrackEventDto {
 
   @IsOptional()
   @IsObject({ message: 'Metadata must be an object' })
+  @MaxJsonSize(10240, { message: 'Metadata size must not exceed 10KB' }) // 10KB limit
+  @MaxObjectDepth(5, { message: 'Metadata nesting must not exceed 5 levels' }) // 5 levels max
+  @MaxObjectKeys(50, { message: 'Metadata must not have more than 50 total keys' }) // 50 keys max
   metadata?: Record<string, any>;
 }
 

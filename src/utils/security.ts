@@ -1,9 +1,52 @@
-export const sanitizeInput = (input: string): string => {
-  return input
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/on\w+\s*=/gi, '')
-    .trim();
+import DOMPurify from 'dompurify';
+
+/**
+ * Sanitize user input to prevent XSS attacks
+ * Uses DOMPurify library for robust sanitization instead of regex
+ *
+ * @param input - The string to sanitize
+ * @param allowedTags - Optional array of allowed HTML tags (default: none)
+ * @returns Sanitized string safe for rendering
+ */
+export const sanitizeInput = (input: string, allowedTags: string[] = []): string => {
+  if (!input || typeof input !== 'string') {
+    return '';
+  }
+
+  // Configure DOMPurify with strict settings
+  const config: DOMPurify.Config = {
+    ALLOWED_TAGS: allowedTags,
+    ALLOWED_ATTR: [], // No attributes allowed by default
+    KEEP_CONTENT: true, // Keep text content even if tags are removed
+    RETURN_DOM: false,
+    RETURN_DOM_FRAGMENT: false,
+    RETURN_TRUSTED_TYPE: false,
+  };
+
+  // Sanitize and trim
+  return DOMPurify.sanitize(input, config).trim();
+};
+
+/**
+ * Sanitize HTML content allowing specific safe tags
+ * Use this when you need to preserve some HTML formatting
+ *
+ * @param html - The HTML string to sanitize
+ * @returns Sanitized HTML safe for rendering
+ */
+export const sanitizeHtml = (html: string): string => {
+  if (!html || typeof html !== 'string') {
+    return '';
+  }
+
+  // Allow only safe formatting tags
+  const config: DOMPurify.Config = {
+    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li'],
+    ALLOWED_ATTR: [],
+    KEEP_CONTENT: true,
+  };
+
+  return DOMPurify.sanitize(html, config);
 };
 
 export const validateUrl = (url: string): boolean => {

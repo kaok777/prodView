@@ -4,6 +4,7 @@ import { ValidationService } from '../common/validation.service';
 import { RateLimitService } from '../common/rate-limit.service';
 import { AuditService } from '../audit/audit.service';
 import { CacheService } from '../common/cache.service';
+import { validateAtLeastOneField } from '../common/validators/require-at-least-one.validator';
 
 @Injectable()
 export class ProductsService {
@@ -500,6 +501,17 @@ export class ProductsService {
       status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
     },
   ) {
+    // Validate at least one field is provided
+    validateAtLeastOneField(data, [
+      'name',
+      'description',
+      'affiliateUrl',
+      'categoryIds',
+      'useCaseIds',
+      'images',
+      'status'
+    ]);
+
     const existingProduct = await this.prisma.product.findUnique({
       where: { id: productId },
     });

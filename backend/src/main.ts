@@ -23,18 +23,29 @@ async function bootstrap() {
   // Enable cookie parser for httpOnly cookies
   app.use(cookieParser());
 
+  // Configure Helmet with strict Content Security Policy
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
+        // Remove 'unsafe-inline' to enforce CSP properly - use CSS files instead
+        styleSrc: ["'self'"],
+        // Strict script policy - no unsafe-inline or unsafe-eval
         scriptSrc: ["'self'"],
+        // Allow images from self, data URIs, and HTTPS (for external product images)
         imgSrc: ["'self'", 'data:', 'https:'],
+        // API connections only to self
         connectSrc: ["'self'"],
         fontSrc: ["'self'"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'"],
         frameSrc: ["'none'"],
+        // Add base-uri restriction
+        baseUri: ["'self'"],
+        // Restrict form actions
+        formAction: ["'self'"],
+        // Upgrade insecure requests in production
+        ...(isProduction ? { upgradeInsecureRequests: [] } : {}),
       },
     },
     crossOriginEmbedderPolicy: false,

@@ -2,7 +2,6 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Layout } from "./components/Layout";
-import { SecurityHeaders } from "./components/SecurityHeaders";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { HomePage } from "./pages/HomePage";
 import { ProductSelectionPage } from "./pages/ProductSelectionPage";
@@ -19,7 +18,6 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <SecurityHeaders />
         <Router>
           <div className="min-h-screen bg-background text-foreground">
             <Routes>
