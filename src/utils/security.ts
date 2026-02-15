@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify';
+import { StorageService, StorageKeys } from '../services/StorageService';
 
 /**
  * Sanitize user input to prevent XSS attacks
@@ -79,12 +80,12 @@ interface AdminSession {
 
 export function getAdminSession(): AdminSession | null {
   try {
-    const session = localStorage.getItem("adminSession");
+    const session = StorageService.get<AdminSession>(StorageKeys.ADMIN_SESSION);
     if (!session) return null;
-    
-    const parsed = JSON.parse(session);
-    if (parsed && parsed.adminId && parsed.email && parsed.role) {
-      return parsed;
+
+    // Validate session structure
+    if (session && session.adminId && session.email && session.role) {
+      return session;
     }
     return null;
   } catch {
@@ -93,10 +94,10 @@ export function getAdminSession(): AdminSession | null {
 }
 
 export function clearAdminSession(): void {
-  localStorage.removeItem("adminSession");
+  StorageService.remove(StorageKeys.ADMIN_SESSION);
   // Note: Actual logout should call /auth/logout to clear httpOnly cookies
 }
 
 export function setAdminSession(session: AdminSession): void {
-  localStorage.setItem("adminSession", JSON.stringify(session));
+  StorageService.set(StorageKeys.ADMIN_SESSION, session);
 }

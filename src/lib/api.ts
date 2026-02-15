@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { NavigationService } from '../services/NavigationService';
 import { ErrorService } from '../services/ErrorService';
+import { StorageService, StorageKeys } from '../services/StorageService';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -58,7 +59,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // Refresh failed, redirect to login with state preservation
         isRefreshing = false;
-        localStorage.removeItem('adminSession');
+        StorageService.remove(StorageKeys.ADMIN_SESSION);
 
         const currentPath = window.location.pathname;
         if (currentPath.startsWith('/admin') && currentPath !== '/admin/login') {

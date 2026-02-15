@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { StorageService, StorageKeys } from "../services/StorageService";
 
 type Theme = "light" | "dark";
 
@@ -11,12 +12,12 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const saved = localStorage.getItem("theme");
-    return (saved as Theme) || "light";
+    const saved = StorageService.get<Theme>(StorageKeys.THEME);
+    return saved || "light";
   });
 
   useEffect(() => {
-    localStorage.setItem("theme", theme);
+    StorageService.set(StorageKeys.THEME, theme);
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 

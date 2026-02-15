@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ProductCard } from "./ProductCard";
 import { Grid, List, Loader2, ChevronDown } from "lucide-react";
 import api from "../lib/api";
+import { ProductQueryBuilder } from "../services/ProductQueryBuilder";
 import type { Product } from "../types";
 
 interface ProductGridProps {
@@ -26,25 +27,18 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
       try {
         setLoading(true);
         setPage(1);
-        let response;
 
-        if (searchQuery) {
-          response = await api.get('/products/search', {
-            params: { keyword: searchQuery, page: 1, pageSize: 40 }
-          });
-        } else if (categoryId) {
-          response = await api.get(`/products/category/${categoryId}`, {
-            params: { page: 1, pageSize: 40, sortBy }
-          });
-        } else if (useCaseId) {
-          response = await api.get(`/products/use-case/${useCaseId}`, {
-            params: { page: 1, pageSize: 40, sortBy }
-          });
-        } else {
-          response = await api.get('/products/latest', {
-            params: { page: 1, pageSize: 40 }
-          });
-        }
+        // Use ProductQueryBuilder to eliminate duplication
+        const query = ProductQueryBuilder.buildQuery({
+          searchQuery,
+          categoryId,
+          useCaseId,
+          sortBy,
+          page: 1,
+          pageSize: 40,
+        });
+
+        const response = await api.get(query.endpoint, { params: query.params });
 
         setProducts(response.data.products || []);
         setTotalPages(response.data.totalPages || 1);
@@ -65,25 +59,18 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
     try {
       setLoadingMore(true);
       const nextPage = page + 1;
-      let response;
 
-      if (searchQuery) {
-        response = await api.get('/products/search', {
-          params: { keyword: searchQuery, page: nextPage, pageSize: 40 }
-        });
-      } else if (categoryId) {
-        response = await api.get(`/products/category/${categoryId}`, {
-          params: { page: nextPage, pageSize: 40, sortBy }
-        });
-      } else if (useCaseId) {
-        response = await api.get(`/products/use-case/${useCaseId}`, {
-          params: { page: nextPage, pageSize: 40, sortBy }
-        });
-      } else {
-        response = await api.get('/products/latest', {
-          params: { page: nextPage, pageSize: 40 }
-        });
-      }
+      // Use ProductQueryBuilder to eliminate duplication
+      const query = ProductQueryBuilder.buildQuery({
+        searchQuery,
+        categoryId,
+        useCaseId,
+        sortBy,
+        page: nextPage,
+        pageSize: 40,
+      });
+
+      const response = await api.get(query.endpoint, { params: query.params });
 
       if (response && response.data.products) {
         setProducts(prev => [...prev, ...response.data.products]);
@@ -120,14 +107,11 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
     <div className="w-full max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
         <h2 className="text-xl md:text-2xl font-bold">
-          {searchQuery ? `Search results for "${searchQuery}"` :
-           categoryId ? "Category Products" :
-           useCaseId ? "Use Case Products" :
-           "Latest Products"}
+          {ProductQueryBuilder.getQueryTitle({ searchQuery, categoryId, useCaseId })}
         </h2>
         <div className="flex items-center gap-2">
           {/* Sort Filter - show for category or use case filter */}
-          {(categoryId || useCaseId) && (
+          {ProductQueryBuilder.shouldShowSort({ searchQuery, categoryId, useCaseId }) && (
             <div className="relative">
               <label htmlFor="sort-select" className="sr-only">
                 Sort products by

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { StorageService } from "../services/StorageService";
 
 interface UseSidebarVisibilityOptions {
   breakpoint: number;
@@ -18,10 +19,10 @@ export function useSidebarVisibility({ breakpoint, storageKey }: UseSidebarVisib
 
     // Check if this is first visit for this sidebar
     if (storageKey) {
-      const hasVisited = localStorage.getItem(storageKey);
+      const hasVisited = StorageService.has(storageKey);
       if (!hasVisited) {
         setIsFirstVisit(true);
-        localStorage.setItem(storageKey, 'true');
+        StorageService.set(storageKey, 'true');
       }
     }
 
