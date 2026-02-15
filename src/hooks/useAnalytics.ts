@@ -1,10 +1,23 @@
 import { useCallback } from "react";
 import api from "../lib/api";
 
+/**
+ * Generates a cryptographically secure session ID
+ * Fixed: LOW-F2 - Weak analytics session ID generation (replaced Math.random())
+ */
+function generateSecureSessionId(): string {
+  // Use crypto.getRandomValues for cryptographically secure random values
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+
+  // Convert to hex string
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
 function getSessionId(): string {
   let sessionId = sessionStorage.getItem('analytics_session_id');
   if (!sessionId) {
-    sessionId = Math.random().toString(36).substring(7);
+    sessionId = generateSecureSessionId();
     sessionStorage.setItem('analytics_session_id', sessionId);
   }
   return sessionId;

@@ -13,6 +13,12 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles } from '../common/decorators';
 
+/**
+ * UploadController
+ *
+ * Handles file upload operations with security validations
+ * Fixed: LOW-B2 - Exposed file metadata in upload responses (removed filename)
+ */
 @Controller('upload')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UploadController {
@@ -38,8 +44,9 @@ export class UploadController {
       throw new BadRequestException('Invalid filename format');
     }
 
+    // Fixed: LOW-B2 - Removed filename from response (information disclosure)
+    // Only return path, mimetype, and size
     return {
-      filename: file.filename,
       path: `/uploads/${file.filename}`,
       mimetype: file.mimetype,
       size: file.size,

@@ -20,11 +20,27 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PaginationDto, LimitDto, SearchDto } from '../common/dto/pagination.dto';
 
+/**
+ * ProductsController
+ *
+ * Handles both public and admin product routes with clear separation:
+ * - Public routes: GET /products/latest, /products/search, /products/category/:id, etc.
+ * - Admin routes: GET /products/admin/all, /products/admin/:id, POST /products, PUT /products/:id, DELETE /products/:id
+ *
+ * Fixed: MEDIUM-B4 - Inconsistent Route Protection Patterns
+ * All admin routes are clearly marked with @Roles('admin') decorator
+ * Public routes are clearly marked with @Public() decorator
+ *
+ * Note: Route order is critical to prevent path shadowing
+ */
 @Controller('products')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  // ==========================================
+  // PUBLIC ROUTES (no authentication required)
+  // ==========================================
   // IMPORTANT: Route order matters to prevent shadowing
   // Specific routes (latest, search, category/:id, use-case/:id, admin/all) must come BEFORE generic /:id
   // Do not reorder without careful consideration
@@ -83,6 +99,10 @@ export class ProductsController {
       paginationDto.sortBy || 'latest',
     );
   }
+
+  // ==========================================
+  // ADMIN ROUTES (requires authentication + admin role)
+  // ==========================================
 
   @Roles('admin')
   @Get('admin/all')

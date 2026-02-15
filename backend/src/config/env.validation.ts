@@ -3,6 +3,9 @@
  *
  * Validates required environment variables on application startup.
  * Fails fast if critical configuration is missing.
+ *
+ * Fixed: LOW-B1 - CORS preflight maxAge too short
+ * Part of: MEDIUM-B4 - Configuration centralization
  */
 
 export interface EnvironmentVariables {
@@ -12,6 +15,7 @@ export interface EnvironmentVariables {
   JWT_SECRET: string;
   JWT_EXPIRATION: string;
   CORS_ORIGIN: string;
+  CORS_MAX_AGE: number;
 }
 
 export function validateEnvironment(): EnvironmentVariables {
@@ -63,6 +67,12 @@ export function validateEnvironment(): EnvironmentVariables {
     errors.push('WARNING: JWT_SECRET appears to be the default value. CHANGE IT IMMEDIATELY!');
   }
 
+  // CORS_MAX_AGE validation (default 86400 seconds = 24 hours)
+  const corsMaxAge = parseInt(process.env.CORS_MAX_AGE || '86400', 10);
+  if (isNaN(corsMaxAge) || corsMaxAge < 0 || corsMaxAge > 86400) {
+    errors.push('CORS_MAX_AGE must be a valid number between 0 and 86400 (24 hours)');
+  }
+
   if (errors.length > 0) {
     console.error('\n❌ Environment Variable Validation Failed:\n');
     errors.forEach((error) => console.error(`   - ${error}`));
@@ -77,5 +87,6 @@ export function validateEnvironment(): EnvironmentVariables {
     JWT_SECRET: process.env.JWT_SECRET!,
     JWT_EXPIRATION: jwtExpiration,
     CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    CORS_MAX_AGE: corsMaxAge,
   };
 }

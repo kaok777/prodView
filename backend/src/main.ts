@@ -61,6 +61,10 @@ async function bootstrap() {
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   }));
 
+  // Get CORS maxAge from environment (default 86400 seconds = 24 hours)
+  // Fixed: LOW-B1 - CORS preflight maxAge too short
+  const corsMaxAge = configService.get<number>('CORS_MAX_AGE', 86400);
+
   const allowedOrigins = corsOrigin.split(',').map(origin => origin.trim());
   app.enableCors({
     origin: (origin, callback) => {
@@ -74,7 +78,7 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
-    maxAge: 600,
+    maxAge: corsMaxAge,
   });
 
   app.use(

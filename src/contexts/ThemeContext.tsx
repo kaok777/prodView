@@ -10,10 +10,22 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+/**
+ * Validates theme value from storage
+ * Fixed: MEDIUM-F6 - Theme Validation Gaps
+ */
+function validateTheme(value: unknown): Theme {
+  if (value === "light" || value === "dark") {
+    return value;
+  }
+  // Default to light theme if invalid value
+  return "light";
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = StorageService.get<Theme>(StorageKeys.THEME);
-    return saved || "light";
+    return validateTheme(saved);
   });
 
   useEffect(() => {
