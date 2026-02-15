@@ -18,7 +18,8 @@
       "Bash(wc -l src/**/*.{ts,tsx})",
       "Bash(npm run lint)",
       "Bash(npm ls:*)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(wc:*)"
     ],
     "deny": [],
     "ask": []
