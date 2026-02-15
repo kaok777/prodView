@@ -8,6 +8,7 @@ import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
 import { HomePage } from "./pages/HomePage";
 import { ProductSelectionPage } from "./pages/ProductSelectionPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { AdminLoginPage } from "./pages/admin/AdminLoginPage";
 import { AdminDashboard } from "./pages/admin/AdminDashboard";
 import { ProductEditorPage } from "./pages/admin/ProductEditorPage";
@@ -148,6 +149,18 @@ export default function App() {
                 <RouteErrorBoundary routeName="ProductDetail">
                   <Layout>
                     <ProductDetailPage />
+                  </Layout>
+                </RouteErrorBoundary>
+              }
+            />
+
+            {/* 404 Catch-All Route */}
+            <Route
+              path="*"
+              element={
+                <RouteErrorBoundary routeName="NotFound">
+                  <Layout>
+                    <NotFoundPage />
                   </Layout>
                 </RouteErrorBoundary>
               }

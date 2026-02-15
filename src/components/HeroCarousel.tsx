@@ -2,14 +2,22 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ProductImage } from "./ProductImage";
+import { useCarousel } from "../hooks/useCarousel";
 import api from "../lib/api";
 import type { Product, ProductWithRelations } from "../types";
 
 export function HeroCarousel() {
   const [products, setProducts] = useState<(Product | ProductWithRelations)[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [autoPlay, setAutoPlay] = useState(true);
+  const [autoplayEnabled, setAutoplayEnabled] = useState(true);
+
+  // Use carousel hook with autoplay
+  const { currentIndex, next, prev, goTo } = useCarousel({
+    itemCount: products.length,
+    autoplay: autoplayEnabled,
+    autoplayInterval: 7000,
+    loop: true,
+  });
 
   useEffect(() => {
     const fetchHeroProducts = async () => {
@@ -66,26 +74,25 @@ export function HeroCarousel() {
     fetchHeroProducts();
   }, []);
 
-  useEffect(() => {
-    if (!autoPlay || products.length === 0) return;
-
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev === products.length - 1 ? 0 : prev + 1));
-    }, 7000);
-
-    return () => clearInterval(interval);
-  }, [autoPlay, products.length]);
+  // Pause autoplay when user interacts, resume after 15s
+  const handleUserInteraction = () => {
+    setAutoplayEnabled(false);
+    setTimeout(() => setAutoplayEnabled(true), 15000);
+  };
 
   const nextProduct = () => {
-    setCurrentIndex((prev) => (prev === products.length - 1 ? 0 : prev + 1));
-    setAutoPlay(false);
-    setTimeout(() => setAutoPlay(true), 15000); // Resume auto-play after 15s
+    next();
+    handleUserInteraction();
   };
 
   const prevProduct = () => {
-    setCurrentIndex((prev) => (prev === 0 ? products.length - 1 : prev - 1));
-    setAutoPlay(false);
-    setTimeout(() => setAutoPlay(true), 15000);
+    prev();
+    handleUserInteraction();
+  };
+
+  const goToProduct = (index: number) => {
+    goTo(index);
+    handleUserInteraction();
   };
 
   if (loading) {
@@ -169,11 +176,7 @@ export function HeroCarousel() {
           {products.map((_, index) => (
             <button
               key={index}
-              onClick={() => {
-                setCurrentIndex(index);
-                setAutoPlay(false);
-                setTimeout(() => setAutoPlay(true), 15000);
-              }}
+              onClick={() => goToProduct(index)}
               className={`w-2 h-2 rounded-full transition-all ${
                 index === currentIndex
                   ? "w-8 bg-primary"

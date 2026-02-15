@@ -6,6 +6,7 @@ import { ProductImage } from "../components/ProductImage";
 import { FilterTag } from "../components/FilterTag";
 import { SEOHead } from "../components/SEOHead";
 import { useAnalytics, useAffiliateTracking } from "../hooks/useAnalytics";
+import { useCarousel } from "../hooks/useCarousel";
 import { generateProductStructuredData } from "../utils/seo";
 import { ErrorService } from "../services/ErrorService";
 import api, { BACKEND_BASE_URL } from "../lib/api";
@@ -13,12 +14,18 @@ import type { ProductWithRelations, Product } from "../types";
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [product, setProduct] = useState<ProductWithRelations | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const { track } = useAnalytics();
   const { trackClick} = useAffiliateTracking();
+
+  // Use carousel hook for image navigation
+  const images = product?.images || [];
+  const { currentIndex: currentMediaIndex, next: nextImage, prev: prevImage, goTo: setCurrentMediaIndex } = useCarousel({
+    itemCount: images.length,
+    loop: true,
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -142,20 +149,6 @@ export function ProductDetailPage() {
       </>
     );
   }
-
-  const images = product?.images || [];
-
-  const nextImage = () => {
-    setCurrentMediaIndex((prev) =>
-      prev === images.length - 1 ? 0 : prev + 1
-    );
-  };
-
-  const prevImage = () => {
-    setCurrentMediaIndex((prev) =>
-      prev === 0 ? images.length - 1 : prev - 1
-    );
-  };
 
   const imageUrl = product.images && product.images[0]
     ? `${BACKEND_BASE_URL}${product.images[0]}`

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Edit, Trash2, Eye, BarChart3, Folder, Tag } from "lucide-react";
 import { ProductImage } from "../../components/ProductImage";
+import { ConfirmDialog } from "../../components/ConfirmDialog";
 import api from "../../lib/api";
 import type { Product } from "../../types";
 
@@ -9,6 +10,15 @@ export function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState<"all" | "DRAFT" | "PUBLISHED" | "ARCHIVED">("all");
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    productId: string | null;
+    productName: string;
+  }>({
+    isOpen: false,
+    productId: null,
+    productName: '',
+  });
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -29,10 +39,19 @@ export function AdminDashboard() {
     fetchProducts();
   }, []);
 
-  const handleDelete = async (productId: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) {
-      return;
-    }
+  const openDeleteConfirmation = (product: Product) => {
+    setConfirmDialog({
+      isOpen: true,
+      productId: product.id,
+      productName: product.name,
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { productId } = confirmDialog;
+    if (!productId) return;
+
+    setConfirmDialog({ isOpen: false, productId: null, productName: '' });
 
     try {
       await api.delete(`/products/${productId}`);
@@ -41,6 +60,10 @@ export function AdminDashboard() {
       console.error('Failed to delete product:', error);
       alert('Failed to delete product. Please try again.');
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setConfirmDialog({ isOpen: false, productId: null, productName: '' });
   };
 
   const filteredProducts = products.filter(product =>
@@ -220,7 +243,7 @@ export function AdminDashboard() {
                           <Edit className="w-4 h-4" />
                         </Link>
                         <button
-                          onClick={() => handleDelete(product.id)}
+                          onClick={() => openDeleteConfirmation(product)}
                           className="p-1 hover:bg-accent rounded text-destructive transition-all duration-150 ease-out hover:scale-110"
                           title="Delete"
                         >
@@ -235,6 +258,17 @@ export function AdminDashboard() {
           </table>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title="Delete Product"
+        message={`Are you sure you want to delete "${confirmDialog.productName}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
     </div>
   );
 }
