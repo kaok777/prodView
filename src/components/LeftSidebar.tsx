@@ -4,12 +4,13 @@ import api from "../lib/api";
 import { useSidebarVisibility } from "../hooks/useSidebarVisibility";
 import { SidebarToggle } from "./SidebarToggle";
 import { ErrorService } from "../services/ErrorService";
+import type { Category, UseCase } from "../types";
 
 export function LeftSidebar() {
   const [activeTab, setActiveTab] = useState<"categories" | "useCases">("categories");
   const [searchParams] = useSearchParams();
-  const [categories, setCategories] = useState<any[]>([]);
-  const [useCases, setUseCases] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [loading, setLoading] = useState(true);
 
   const { isCollapsed, setIsCollapsed, isFirstVisit } = useSidebarVisibility({

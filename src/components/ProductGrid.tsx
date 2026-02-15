@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ProductCard } from "./ProductCard";
 import { Grid, List, Loader2, ChevronDown } from "lucide-react";
 import api from "../lib/api";
+import type { Product } from "../types";
 
 interface ProductGridProps {
   categoryId?: string | null;
@@ -14,7 +15,7 @@ type SortOption = "latest" | "mostViewed";
 export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridProps) {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState<SortOption>("latest");
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -168,7 +169,7 @@ export function ProductGrid({ categoryId, useCaseId, searchQuery }: ProductGridP
       ) : (
         <>
           <div className={view === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6" : "space-y-4"}>
-            {products.map((product: any) => (
+            {products.map((product) => (
               <ProductCard key={product.id} product={product} view={view} />
             ))}
           </div>

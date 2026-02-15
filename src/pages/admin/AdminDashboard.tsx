@@ -3,10 +3,11 @@ import { Link } from "react-router-dom";
 import { Plus, Edit, Trash2, Eye, BarChart3, Folder, Tag } from "lucide-react";
 import { ProductImage } from "../../components/ProductImage";
 import api from "../../lib/api";
+import type { Product } from "../../types";
 
 export function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState<"all" | "DRAFT" | "PUBLISHED" | "ARCHIVED">("all");
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

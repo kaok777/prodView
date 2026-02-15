@@ -5,9 +5,10 @@ import api from "../lib/api";
 import { useSidebarVisibility } from "../hooks/useSidebarVisibility";
 import { SidebarToggle } from "./SidebarToggle";
 import { ErrorService } from "../services/ErrorService";
+import type { Product } from "../types";
 
 export function RightSidebar() {
-  const [latestProducts, setLatestProducts] = useState<any[]>([]);
+  const [latestProducts, setLatestProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   const { isCollapsed, setIsCollapsed, isFirstVisit } = useSidebarVisibility({

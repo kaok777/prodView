@@ -9,12 +9,13 @@ import { useAnalytics, useAffiliateTracking } from "../hooks/useAnalytics";
 import { generateProductStructuredData } from "../utils/seo";
 import { ErrorService } from "../services/ErrorService";
 import api, { BACKEND_BASE_URL } from "../lib/api";
+import type { ProductWithRelations, Product } from "../types";
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
-  const [product, setProduct] = useState<any>(null);
-  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+  const [product, setProduct] = useState<ProductWithRelations | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const { track } = useAnalytics();
   const { trackClick} = useAffiliateTracking();
@@ -243,7 +244,7 @@ export function ProductDetailPage() {
               {/* Category and Use Case Tags */}
               {(product.categories?.length > 0 || product.useCases?.length > 0) && (
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {product.categories?.map((categoryItem: any) => {
+                  {product.categories?.map((categoryItem) => {
                     const category = categoryItem.category || categoryItem;
                     return (
                       <FilterTag
@@ -254,7 +255,7 @@ export function ProductDetailPage() {
                       />
                     );
                   })}
-                  {product.useCases?.map((useCaseItem: any) => {
+                  {product.useCases?.map((useCaseItem) => {
                     const useCase = useCaseItem.useCase || useCaseItem;
                     return (
                       <FilterTag

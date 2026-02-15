@@ -1,5 +1,5 @@
 import React, { Component, ReactNode } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, NavigateFunction, Location } from 'react-router-dom';
 import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
 import { ErrorService } from '../services/ErrorService';
 
@@ -20,8 +20,8 @@ interface State {
  * Catches errors in route components and shows fallback UI
  * Allows navigation to home or retry without full page reload
  */
-class RouteErrorBoundaryClass extends Component<Props & { navigate: any; location: any }, State> {
-  constructor(props: Props & { navigate: any; location: any }) {
+class RouteErrorBoundaryClass extends Component<Props & { navigate: NavigateFunction; location: Location }, State> {
+  constructor(props: Props & { navigate: NavigateFunction; location: Location }) {
     super(props);
     this.state = {
       hasError: false,
@@ -54,7 +54,7 @@ class RouteErrorBoundaryClass extends Component<Props & { navigate: any; locatio
     });
   }
 
-  componentDidUpdate(prevProps: Props & { navigate: any; location: any }) {
+  componentDidUpdate(prevProps: Props & { navigate: NavigateFunction; location: Location }) {
     // Reset error state when route changes
     if (this.state.hasError && prevProps.location.pathname !== this.props.location.pathname) {
       this.setState({

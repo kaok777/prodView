@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
 import { ProductImage } from "./ProductImage";
+import type { Product, ProductWithRelations } from "../types";
 
 interface ProductCardProps {
-  product: any;
+  product: Product | ProductWithRelations;
   view?: "grid" | "list";
 }
 

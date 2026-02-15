@@ -3,9 +3,10 @@ import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ProductImage } from "./ProductImage";
 import api from "../lib/api";
+import type { Product, ProductWithRelations } from "../types";
 
 export function HeroCarousel() {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<(Product | ProductWithRelations)[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [autoPlay, setAutoPlay] = useState(true);
@@ -25,7 +26,7 @@ export function HeroCarousel() {
         const allProducts = productsRes.data.products || [];
 
         // Select one product per category, up to 7
-        const heroProducts: any[] = [];
+        const heroProducts: (Product | ProductWithRelations)[] = [];
         const usedCategories = new Set<string>();
 
         for (const product of allProducts) {

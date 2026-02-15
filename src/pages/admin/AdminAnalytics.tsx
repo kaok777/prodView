@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { BarChart3, Eye, MousePointer, Search, TrendingUp } from "lucide-react";
 import api from "../../lib/api";
+import type { ProductWithAnalytics, CategoryWithAnalytics, SearchQueryStat } from "../../types";
 
 export function AdminAnalytics() {
-  const [topProducts, setTopProducts] = useState<any[]>([]);
-  const [affiliateClicks, setAffiliateClicks] = useState<any[]>([]);
-  const [categoryStats, setCategoryStats] = useState<any[]>([]);
-  const [searchStats, setSearchStats] = useState<any[]>([]);
+  const [topProducts, setTopProducts] = useState<ProductWithAnalytics[]>([]);
+  const [affiliateClicks, setAffiliateClicks] = useState<ProductWithAnalytics[]>([]);
+  const [categoryStats, setCategoryStats] = useState<CategoryWithAnalytics[]>([]);
+  const [searchStats, setSearchStats] = useState<SearchQueryStat[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

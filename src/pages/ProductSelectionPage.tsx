@@ -4,12 +4,13 @@ import { SEOHead } from "../components/SEOHead";
 import { useAnalytics } from "../hooks/useAnalytics";
 import { useEffect, useState } from "react";
 import api from "../lib/api";
+import type { Category, UseCase } from "../types";
 
 export function ProductSelectionPage() {
   const [searchParams] = useSearchParams();
   const { track } = useAnalytics();
-  const [category, setCategory] = useState<any>(null);
-  const [useCase, setUseCase] = useState<any>(null);
+  const [category, setCategory] = useState<Category | null>(null);
+  const [useCase, setUseCase] = useState<UseCase | null>(null);
 
   const categoryId = searchParams.get("category");
   const useCaseId = searchParams.get("useCase");

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Upload, X, Save } from "lucide-react";
 import { ProductImage } from "../../components/ProductImage";
 import api from "../../lib/api";
+import type { Category, UseCase, ProductStatus } from "../../types";
 
 export function ProductEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -17,11 +18,11 @@ export function ProductEditorPage() {
     categoryIds: [] as string[],
     useCaseIds: [] as string[],
     images: [] as string[],
-    status: "DRAFT" as "DRAFT" | "PUBLISHED" | "ARCHIVED"
+    status: "DRAFT" as ProductStatus
   });
 
-  const [categories, setCategories] = useState<any[]>([]);
-  const [useCases, setUseCases] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
 
@@ -45,8 +46,8 @@ export function ProductEditorPage() {
             name: product.name,
             description: product.description,
             affiliateUrl: product.affiliateUrl,
-            categoryIds: product.categories?.map((c: any) => c.category?.id || c.id) || [],
-            useCaseIds: product.useCases?.map((u: any) => u.useCase?.id || u.id) || [],
+            categoryIds: product.categories?.map((c: { category?: { id: string }; id: string }) => c.category?.id || c.id) || [],
+            useCaseIds: product.useCases?.map((u: { useCase?: { id: string }; id: string }) => u.useCase?.id || u.id) || [],
             images: product.images || [],
             status: product.status || "DRAFT"
           });
@@ -221,7 +222,7 @@ export function ProductEditorPage() {
               <select
                 id="product-status"
                 value={formData.status}
-                onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as ProductStatus }))}
                 className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out"
               >
                 <option value="DRAFT">Draft</option>
