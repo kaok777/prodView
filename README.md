@@ -1,59 +1,71 @@
 # ProdView
 
-**ProdView** is a modern affiliate product showcase platform built with a decoupled architecture featuring a NestJS backend API and React frontend.
+ProdView is an affiliate marketing landing platform designed to serve as the destination website for traffic from social media advertising campaigns. The platform provides a product showcase with category filtering, use case tagging, clickable navigation, and affiliate link tracking with analytics.
 
----
+## Overview
 
-## ⚡ **QUICK START** - Image Rendering Fix
+ProdView is a full-stack web application built with a decoupled architecture:
 
-**If images are not displaying**, the servers need to be started:
+- **Frontend**: React 19 single-page application with TypeScript, TailwindCSS, and modern routing
+- **Backend**: NestJS REST API with PostgreSQL database, Prisma ORM, JWT authentication, and file upload handling
+- **Purpose**: Affiliate marketing landing pages with product discovery, filtering, and conversion tracking
 
-```bash
-# Automated startup (recommended)
-./start-dev.sh
+The platform allows administrators to manage products, categories, and use cases through a protected admin dashboard, while providing public users with an optimized product discovery experience with SEO-friendly pages, dark/light theme support, and affiliate click tracking.
 
-# OR manual startup:
-# Terminal 1: Start PostgreSQL
-sudo service postgresql start
+## Tech Stack
 
-# Terminal 2: Start Backend
-cd backend && npm run start:dev
+### Frontend
+- **Framework**: React 19.2.1
+- **Build Tool**: Vite 6.2.0
+- **Language**: TypeScript 5.7.2
+- **Styling**: TailwindCSS 3.x with custom CSS variables
+- **Routing**: React Router DOM 7.13.0
+- **State Management**: React Context (ThemeContext) + local state
+- **Forms**: React Hook Form 7.71.1 with Zod 4.3.6 validation
+- **HTTP Client**: Axios 1.6.7
+- **UI Components**: Lucide React icons, custom components
+- **SEO**: react-helmet-async 2.0.5 with Schema.org structured data
+- **Sanitization**: DOMPurify 3.3.1
+- **Notifications**: Sonner 2.0.3
 
-# Terminal 3: Start Frontend
-npm run dev
-```
+### Backend
+- **Framework**: NestJS 10.3.0
+- **Language**: TypeScript 5.3.3
+- **Database**: PostgreSQL (via Prisma ORM 5.22.0)
+- **Authentication**: JWT (Passport.js) with bcryptjs password hashing
+- **Security**: Helmet 7.1.0, CORS, rate limiting (express-rate-limit)
+- **File Upload**: Multer 1.4.5-lts.1
+- **Validation**: class-validator 0.14.1, class-transformer 0.5.1
+- **Configuration**: @nestjs/config 3.1.1
+- **Scheduling**: @nestjs/schedule 6.1.1
+- **HTML Sanitization**: sanitize-html 2.11.0
 
-📖 **For detailed troubleshooting**: See [`mdFiles/IMAGE_FIX_RESOLUTION.md`](./mdFiles/IMAGE_FIX_RESOLUTION.md) and [`START_SERVERS.md`](./START_SERVERS.md)
+### Development Tools
+- **Node.js**: >=18.0.0
+- **Package Manager**: npm
+- **Linting**: ESLint (TypeScript ESLint)
+- **Formatting**: Prettier 3.x
+- **Path Aliases**: @/ for src/ (frontend only)
 
----
+## Environment Setup
 
-## 🏗️ Architecture
+### Prerequisites
 
-- **Backend**: NestJS + PostgreSQL + Prisma ORM
-- **Frontend**: React + Vite + TailwindCSS
-- **Authentication**: JWT-based with bcrypt password hashing
-- **File Storage**: Local filesystem with Multer
-- **Database**: PostgreSQL with Prisma migrations
+- **Node.js**: 18.0.0 or higher
+- **npm**: 9.0.0 or higher (included with Node.js)
+- **PostgreSQL**: 14.0 or higher
+- **Operating System**: Linux, macOS, or Windows with WSL2
 
-## 📋 Prerequisites
+### Installation
 
-Before you begin, ensure you have the following installed:
-
-- **Node.js**: >= 18.0.0 ([Download](https://nodejs.org/))
-- **PostgreSQL**: >= 14.0 ([Download](https://www.postgresql.org/download/))
-- **npm**: >= 9.0.0 (comes with Node.js)
-- **Git**: Latest version
-
-## 🚀 Quick Start
-
-### 1. Clone the Repository
+#### 1. Clone Repository
 
 ```bash
 git clone <repository-url>
 cd prodView
 ```
 
-### 2. Backend Setup
+#### 2. Backend Setup
 
 ```bash
 # Navigate to backend directory
@@ -62,93 +74,151 @@ cd backend
 # Install dependencies
 npm install
 
-# Copy environment variables
+# Copy environment template
 cp .env.example .env
 
-# Edit .env and configure your database connection
-# Update DATABASE_URL, JWT_SECRET, and other variables
+# Edit environment variables (see Environment Variables section)
+# Update DATABASE_URL, JWT_SECRET, and other required variables
 nano .env  # or use your preferred editor
 
 # Generate Prisma Client
 npm run prisma:generate
 
+# Create database (if not exists)
+# Connect to PostgreSQL: psql -U postgres
+# CREATE DATABASE prodview;
+# \q
+
 # Run database migrations
 npm run prisma:migrate
 
-# (Optional) Seed the database with sample data
+# Seed database with sample data (optional)
 npm run db:seed
-
-# Start the backend server
-npm run start:dev
 ```
 
-The backend API will be available at `http://localhost:3000`
-
-### 3. Frontend Setup
+#### 3. Frontend Setup
 
 ```bash
-# Navigate to project root (if in backend/)
+# Return to project root
 cd ..
 
 # Install dependencies
 npm install
 
-# Copy environment variables
+# Copy environment template
 cp .env.example .env
 
-# Edit .env to point to your backend
-nano .env  # Verify VITE_API_URL=http://localhost:3000
-
-# Start the development server
-npm run dev
+# Edit environment variables
+# Verify VITE_API_URL points to backend (default: http://localhost:3000/api)
+nano .env
 ```
 
-The frontend will open automatically at `http://localhost:5173`
-
-## 🔧 Development
-
-### Backend Commands
+#### 4. Create Admin User
 
 ```bash
 cd backend
 
-# Development (with hot reload)
+# Run interactive admin creation script
+npm run create-admin
+
+# Follow prompts to enter email and password
+# Password requirements: min 8 chars, uppercase, lowercase, digit, special char
+```
+
+For detailed admin user management, see `ADMIN_USER_RESET_GUIDE.md`.
+
+### Development
+
+#### Start Development Servers
+
+**Option 1: Automated Startup (Recommended)**
+```bash
+# From project root (requires bash shell)
+./start-dev.sh
+```
+
+**Option 2: Manual Startup**
+```bash
+# Terminal 1: Start PostgreSQL (if not running as service)
+sudo service postgresql start
+
+# Terminal 2: Start Backend (from project root)
+cd backend
 npm run start:dev
 
-# Production build
+# Terminal 3: Start Frontend (from project root)
+npm run dev
+```
+
+**Expected Behavior**:
+- Backend API runs on `http://localhost:3000`
+- Frontend dev server runs on `http://localhost:5173`
+- Frontend automatically opens in default browser
+
+#### Backend Development Commands
+
+```bash
+cd backend
+
+# Development server with hot reload
+npm run start:dev
+
+# Build for production
 npm run build
+
+# Start production server
 npm run start:prod
 
-# Database commands
-npm run prisma:generate    # Generate Prisma Client
-npm run prisma:migrate     # Run migrations (dev)
-npm run prisma:deploy      # Deploy migrations (production)
-npm run prisma:studio      # Open Prisma Studio (database GUI)
+# Debug mode
+npm run start:debug
 
-# Seed database
-npm run db:seed
-
-# Code formatting
+# Format code
 npm run format
 ```
 
-### Frontend Commands
+#### Frontend Development Commands
 
 ```bash
-# Development server
+# Development server (opens browser automatically)
 npm run dev
 
-# Production build
+# Build for production
 npm run build
 
-# Preview production build locally
+# Preview production build
 npm run preview
 
-# Type checking
+# Type checking without build
 npm run lint
 
-# Code formatting
+# Format code
 npm run format
+```
+
+### Build
+
+#### Production Build
+
+**Backend**:
+```bash
+cd backend
+npm run build
+# Output: backend/dist/
+```
+
+**Frontend**:
+```bash
+npm run build
+# Output: dist/
+```
+
+### Preview
+
+Preview production build locally:
+
+```bash
+npm run preview
+# Serves from dist/ on http://localhost:4173
 ```
 
 ## 📁 Project Structure
