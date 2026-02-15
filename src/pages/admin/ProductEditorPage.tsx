@@ -1,30 +1,62 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Upload, X, Save } from "lucide-react";
 import { ProductImage } from "../../components/ProductImage";
+import { FormInput } from "../../components/FormInput";
+import { FormTextarea } from "../../components/FormTextarea";
+import { FormSelect } from "../../components/FormSelect";
+import { FormErrorList } from "../../components/FormError";
 import api from "../../lib/api";
+import { productSchema, ProductFormData } from "../../lib/validationSchemas";
+import { getAllErrorMessages } from "../../lib/formValidation";
 import type { Category, UseCase, ProductStatus } from "../../types";
+
+/**
+ * ProductEditorPage Component
+ *
+ * Admin page for creating and editing products with form validation
+ * Fixed: HIGH-F6 - Form Validation Missing
+ * Helps: MEDIUM-B3 - Missing Input Validation in Update Endpoints (client-side prevention)
+ */
 
 export function ProductEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    affiliateUrl: "",
-    categoryIds: [] as string[],
-    useCaseIds: [] as string[],
-    images: [] as string[],
-    status: "DRAFT" as ProductStatus
-  });
-
   const [categories, setCategories] = useState<Category[]>([]);
   const [useCases, setUseCases] = useState<UseCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+
+  // Initialize react-hook-form with zod validation
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setValue,
+    watch,
+    reset,
+  } = useForm<ProductFormData>({
+    resolver: zodResolver(productSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      affiliateUrl: "",
+      categoryIds: [],
+      useCaseIds: [],
+      images: [],
+      status: "DRAFT" as ProductStatus,
+    },
+  });
+
+  // Watch images array for UI updates
+  const images = watch("images");
+  const categoryIds = watch("categoryIds");
+  const useCaseIds = watch("useCaseIds");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,14 +74,15 @@ export function ProductEditorPage() {
           const productRes = await api.get(`/products/admin/${id}`);
           const product = productRes.data;
 
-          setFormData({
+          // Reset form with product data
+          reset({
             name: product.name,
             description: product.description,
             affiliateUrl: product.affiliateUrl,
             categoryIds: product.categories?.map((c: { category?: { id: string }; id: string }) => c.category?.id || c.id) || [],
             useCaseIds: product.useCases?.map((u: { useCase?: { id: string }; id: string }) => u.useCase?.id || u.id) || [],
             images: product.images || [],
-            status: product.status || "DRAFT"
+            status: product.status || "DRAFT",
           });
         }
       } catch (error) {
@@ -63,15 +96,14 @@ export function ProductEditorPage() {
     fetchData();
   }, [id, isEditing]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  // Form submission with validation
+  const onSubmit = async (data: ProductFormData) => {
     try {
       if (isEditing && id) {
-        await api.put(`/products/${id}`, formData);
+        await api.put(`/products/${id}`, data);
         toast.success("Product updated successfully");
       } else {
-        await api.post('/products', formData);
+        await api.post('/products', data);
         toast.success("Product created successfully");
       }
       navigate("/admin");
@@ -101,10 +133,9 @@ export function ProductEditorPage() {
 
       const uploadedPaths = await Promise.all(uploadPromises);
 
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, ...uploadedPaths]
-      }));
+      // Update form value
+      const currentImages = watch("images");
+      setValue("images", [...currentImages, ...uploadedPaths], { shouldValidate: true });
 
       toast.success(`${uploadedPaths.length} image(s) uploaded successfully`);
     } catch (error: any) {
@@ -116,10 +147,8 @@ export function ProductEditorPage() {
   };
 
   const removeImage = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
+    const currentImages = watch("images");
+    setValue("images", currentImages.filter((_, i) => i !== index), { shouldValidate: true });
   };
 
   if (loading) {
@@ -165,97 +194,73 @@ export function ProductEditorPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Display validation errors */}
+        {Object.keys(errors).length > 0 && (
+          <FormErrorList errors={getAllErrorMessages(errors)} />
+        )}
+
         <div className="grid md:grid-cols-2 gap-6">
           {/* Basic Info */}
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Product Name *
-              </label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                required
-                className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out placeholder:text-muted-foreground"
-                placeholder="Enter product name"
-              />
-            </div>
+            <FormInput
+              label="Product Name"
+              required
+              {...register("name")}
+              error={errors.name?.message}
+              placeholder="Enter product name"
+            />
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Description * (max 10,000 characters)
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                required
-                maxLength={10000}
-                rows={6}
-                className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out placeholder:text-muted-foreground resize-vertical"
-                placeholder="Enter product description"
-              />
-              <div className="text-xs text-muted-foreground text-right mt-1">
-                {formData.description.length} / 10,000
-              </div>
-            </div>
+            <FormTextarea
+              label="Description"
+              required
+              {...register("description")}
+              error={errors.description?.message}
+              placeholder="Enter product description"
+              rows={6}
+              maxLength={5000}
+            />
 
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Affiliate URL *
-              </label>
-              <input
-                type="url"
-                value={formData.affiliateUrl}
-                onChange={(e) => setFormData(prev => ({ ...prev, affiliateUrl: e.target.value }))}
-                required
-                className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out placeholder:text-muted-foreground"
-                placeholder="https://example.com/product"
-              />
-            </div>
+            <FormInput
+              label="Affiliate URL"
+              type="url"
+              required
+              {...register("affiliateUrl")}
+              error={errors.affiliateUrl?.message}
+              placeholder="https://example.com/product"
+            />
 
-            <div>
-              <label htmlFor="product-status" className="block text-sm font-medium mb-2">
-                Status *
-              </label>
-              <select
-                id="product-status"
-                value={formData.status}
-                onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as ProductStatus }))}
-                className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out"
-              >
-                <option value="DRAFT">Draft</option>
-                <option value="PUBLISHED">Published</option>
-                <option value="ARCHIVED">Archived</option>
-              </select>
-            </div>
+            <FormSelect
+              label="Status"
+              required
+              {...register("status")}
+              error={errors.status?.message}
+            >
+              <option value="DRAFT">Draft</option>
+              <option value="PUBLISHED">Published</option>
+              <option value="ARCHIVED">Archived</option>
+            </FormSelect>
           </div>
 
           {/* Categories & Use Cases */}
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-2">
-                Categories
+                Categories *
               </label>
-              <div className="space-y-2 max-h-40 overflow-y-auto border border-border rounded-lg p-2">
+              <div className={`space-y-2 max-h-40 overflow-y-auto border rounded-lg p-2 ${
+                errors.categoryIds ? "border-destructive" : "border-border"
+              }`}>
                 {categories.map((category) => (
-                  <label key={category.id} className="flex items-center gap-2">
+                  <label key={category.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent/50 p-1 rounded transition-colors">
                     <input
                       type="checkbox"
-                      checked={formData.categoryIds.includes(category.id)}
+                      checked={categoryIds.includes(category.id)}
                       onChange={(e) => {
-                        if (e.target.checked) {
-                          setFormData(prev => ({
-                            ...prev,
-                            categoryIds: [...prev.categoryIds, category.id]
-                          }));
-                        } else {
-                          setFormData(prev => ({
-                            ...prev,
-                            categoryIds: prev.categoryIds.filter(id => id !== category.id)
-                          }));
-                        }
+                        const newIds = e.target.checked
+                          ? [...categoryIds, category.id]
+                          : categoryIds.filter(id => id !== category.id);
+                        setValue("categoryIds", newIds, { shouldValidate: true });
                       }}
                       className="rounded"
                     />
@@ -263,30 +268,28 @@ export function ProductEditorPage() {
                   </label>
                 ))}
               </div>
+              {errors.categoryIds && (
+                <p className="text-sm text-destructive mt-1">{errors.categoryIds.message}</p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-2">
-                Use Cases
+                Use Cases *
               </label>
-              <div className="space-y-2 max-h-40 overflow-y-auto border border-border rounded-lg p-2">
+              <div className={`space-y-2 max-h-40 overflow-y-auto border rounded-lg p-2 ${
+                errors.useCaseIds ? "border-destructive" : "border-border"
+              }`}>
                 {useCases.map((useCase) => (
-                  <label key={useCase.id} className="flex items-center gap-2">
+                  <label key={useCase.id} className="flex items-center gap-2 cursor-pointer hover:bg-accent/50 p-1 rounded transition-colors">
                     <input
                       type="checkbox"
-                      checked={formData.useCaseIds.includes(useCase.id)}
+                      checked={useCaseIds.includes(useCase.id)}
                       onChange={(e) => {
-                        if (e.target.checked) {
-                          setFormData(prev => ({
-                            ...prev,
-                            useCaseIds: [...prev.useCaseIds, useCase.id]
-                          }));
-                        } else {
-                          setFormData(prev => ({
-                            ...prev,
-                            useCaseIds: prev.useCaseIds.filter(id => id !== useCase.id)
-                          }));
-                        }
+                        const newIds = e.target.checked
+                          ? [...useCaseIds, useCase.id]
+                          : useCaseIds.filter(id => id !== useCase.id);
+                        setValue("useCaseIds", newIds, { shouldValidate: true });
                       }}
                       className="rounded"
                     />
@@ -294,6 +297,9 @@ export function ProductEditorPage() {
                   </label>
                 ))}
               </div>
+              {errors.useCaseIds && (
+                <p className="text-sm text-destructive mt-1">{errors.useCaseIds.message}</p>
+              )}
             </div>
           </div>
         </div>
@@ -301,11 +307,13 @@ export function ProductEditorPage() {
         {/* Media Upload Section */}
         <div>
           <label className="block text-sm font-medium mb-2">
-            Product Images (Max 20)
+            Product Images *
           </label>
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <label className={`flex items-center gap-2 px-4 py-2 border border-border rounded-lg cursor-pointer hover:bg-accent hover:shadow-sm transition-all duration-200 ease-in-out ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              <label className={`flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer hover:bg-accent hover:shadow-sm transition-all duration-200 ease-in-out ${
+                uploading ? 'opacity-50 cursor-not-allowed' : ''
+              } ${errors.images ? 'border-destructive' : 'border-border'}`}>
                 <Upload className="w-4 h-4" />
                 {uploading ? "Uploading..." : "Upload Images"}
                 <input
@@ -318,13 +326,16 @@ export function ProductEditorPage() {
                 />
               </label>
               <span className="text-sm text-muted-foreground">
-                {formData.images.length} / 20 uploaded
+                {images.length} / 10 uploaded
               </span>
             </div>
+            {errors.images && (
+              <p className="text-sm text-destructive">{errors.images.message}</p>
+            )}
 
-            {formData.images.length > 0 && (
+            {images.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {formData.images.map((imagePath, index) => (
+                {images.map((imagePath, index) => (
                   <div key={index} className="relative group">
                     <div className="aspect-video bg-muted rounded-lg overflow-hidden">
                       <ProductImage
@@ -355,10 +366,11 @@ export function ProductEditorPage() {
         <div className="flex justify-end gap-2">
           <button
             type="submit"
-            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 hover:shadow-md transition-all duration-200 ease-in-out flex items-center gap-2"
+            disabled={isSubmitting}
+            className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 hover:shadow-md transition-all duration-200 ease-in-out flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-4 h-4" />
-            {isEditing ? "Update Product" : "Create Product"}
+            {isSubmitting ? "Saving..." : isEditing ? "Update Product" : "Create Product"}
           </button>
         </div>
       </form>

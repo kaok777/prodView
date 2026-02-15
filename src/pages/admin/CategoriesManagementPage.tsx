@@ -1,7 +1,22 @@
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Plus, Edit2, Trash2, X } from "lucide-react";
+import { ConfirmDialog, useConfirmDialog } from "../../components/ConfirmDialog";
+import { FormInput } from "../../components/FormInput";
+import { FormSelect } from "../../components/FormSelect";
 import api from "../../lib/api";
+import { categorySchema, CategoryFormData } from "../../lib/validationSchemas";
+
+/**
+ * CategoriesManagementPage Component
+ *
+ * Admin page for managing categories with form validation and ConfirmDialog
+ * Fixed: HIGH-F6 - Form Validation Missing
+ * Fixed: HIGH-F5 - Browser confirm() Dialogs (uses ConfirmDialog from Master Prompt 7)
+ * Helps: MEDIUM-B3 - Missing Input Validation in Update Endpoints (client-side prevention)
+ */
 
 interface Category {
   id: string;
@@ -16,10 +31,23 @@ export function CategoriesManagementPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    parentCategoryId: "",
+
+  // Initialize react-hook-form with zod validation
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<CategoryFormData>({
+    resolver: zodResolver(categorySchema),
+    defaultValues: {
+      name: "",
+      parentCategoryId: "",
+    },
   });
+
+  // ConfirmDialog for delete confirmation
+  const confirmDialog = useConfirmDialog();
 
   useEffect(() => {
     fetchCategories();
@@ -38,26 +66,25 @@ export function CategoriesManagementPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  // Form submission with validation
+  const onSubmit = async (data: CategoryFormData) => {
     try {
       if (editingCategory) {
         await api.put(`/categories/${editingCategory.id}`, {
-          name: formData.name,
-          parentCategoryId: formData.parentCategoryId || null,
+          name: data.name,
+          parentCategoryId: data.parentCategoryId || null,
         });
         toast.success("Category updated successfully");
       } else {
         await api.post("/categories", {
-          name: formData.name,
-          parentCategoryId: formData.parentCategoryId || null,
+          name: data.name,
+          parentCategoryId: data.parentCategoryId || null,
         });
         toast.success("Category created successfully");
       }
       setShowModal(false);
       setEditingCategory(null);
-      setFormData({ name: "", parentCategoryId: "" });
+      reset();
       fetchCategories();
     } catch (error: any) {
       console.error("Failed to save category:", error);
@@ -67,7 +94,7 @@ export function CategoriesManagementPage() {
 
   const handleEdit = (category: Category) => {
     setEditingCategory(category);
-    setFormData({
+    reset({
       name: category.name,
       parentCategoryId: category.parentCategoryId || "",
     });
@@ -75,7 +102,8 @@ export function CategoriesManagementPage() {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+    const confirmed = await confirmDialog.open();
+    if (!confirmed) return;
 
     try {
       await api.delete(`/categories/${id}`);
@@ -90,7 +118,7 @@ export function CategoriesManagementPage() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingCategory(null);
-    setFormData({ name: "", parentCategoryId: "" });
+    reset();
   };
 
   if (loading) {
@@ -180,45 +208,29 @@ export function CategoriesManagementPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Category Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, name: e.target.value }))
-                  }
-                  required
-                  className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out placeholder:text-muted-foreground"
-                  placeholder="Enter category name"
-                />
-              </div>
+            <form onSubmit={handleFormSubmit(onSubmit)} className="space-y-4">
+              <FormInput
+                label="Category Name"
+                required
+                {...register("name")}
+                error={errors.name?.message}
+                placeholder="Enter category name"
+              />
 
-              <div>
-                <label htmlFor="parent-category-select" className="block text-sm font-medium mb-2">
-                  Parent Category (Optional)
-                </label>
-                <select
-                  id="parent-category-select"
-                  value={formData.parentCategoryId}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, parentCategoryId: e.target.value }))
-                  }
-                  className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out"
-                >
-                  <option value="">None</option>
-                  {categories
-                    .filter((c) => c.id !== editingCategory?.id)
-                    .map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
+              <FormSelect
+                label="Parent Category (Optional)"
+                {...register("parentCategoryId")}
+                error={errors.parentCategoryId?.message}
+              >
+                <option value="">None</option>
+                {categories
+                  .filter((c) => c.id !== editingCategory?.id)
+                  .map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+              </FormSelect>
 
               <div className="flex justify-end gap-2">
                 <button
@@ -230,15 +242,28 @@ export function CategoriesManagementPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 hover:shadow-md transition-all duration-150 ease-out"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 hover:shadow-md transition-all duration-150 ease-out disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {editingCategory ? "Update" : "Create"}
+                  {isSubmitting ? "Saving..." : editingCategory ? "Update" : "Create"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title="Delete Category"
+        message="Are you sure you want to delete this category? This action cannot be undone."
+        variant="danger"
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDialog.confirm}
+        onCancel={confirmDialog.close}
+      />
     </div>
   );
 }

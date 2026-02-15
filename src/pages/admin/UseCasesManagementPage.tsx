@@ -1,7 +1,21 @@
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Plus, Edit2, Trash2, X } from "lucide-react";
+import { ConfirmDialog, useConfirmDialog } from "../../components/ConfirmDialog";
+import { FormInput } from "../../components/FormInput";
 import api from "../../lib/api";
+import { useCaseSchema, UseCaseFormData } from "../../lib/validationSchemas";
+
+/**
+ * UseCasesManagementPage Component
+ *
+ * Admin page for managing use cases with form validation and ConfirmDialog
+ * Fixed: HIGH-F6 - Form Validation Missing
+ * Fixed: HIGH-F5 - Browser confirm() Dialogs (uses ConfirmDialog from Master Prompt 7)
+ * Helps: MEDIUM-B3 - Missing Input Validation in Update Endpoints (client-side prevention)
+ */
 
 interface UseCase {
   id: string;
@@ -14,9 +28,22 @@ export function UseCasesManagementPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingUseCase, setEditingUseCase] = useState<UseCase | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
+
+  // Initialize react-hook-form with zod validation
+  const {
+    register,
+    handleSubmit: handleFormSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<UseCaseFormData>({
+    resolver: zodResolver(useCaseSchema),
+    defaultValues: {
+      name: "",
+    },
   });
+
+  // ConfirmDialog for delete confirmation
+  const confirmDialog = useConfirmDialog();
 
   useEffect(() => {
     fetchUseCases();
@@ -35,24 +62,23 @@ export function UseCasesManagementPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  // Form submission with validation
+  const onSubmit = async (data: UseCaseFormData) => {
     try {
       if (editingUseCase) {
         await api.put(`/use-cases/${editingUseCase.id}`, {
-          name: formData.name,
+          name: data.name,
         });
         toast.success("Use case updated successfully");
       } else {
         await api.post("/use-cases", {
-          name: formData.name,
+          name: data.name,
         });
         toast.success("Use case created successfully");
       }
       setShowModal(false);
       setEditingUseCase(null);
-      setFormData({ name: "" });
+      reset();
       fetchUseCases();
     } catch (error: any) {
       console.error("Failed to save use case:", error);
@@ -62,14 +88,15 @@ export function UseCasesManagementPage() {
 
   const handleEdit = (useCase: UseCase) => {
     setEditingUseCase(useCase);
-    setFormData({
+    reset({
       name: useCase.name,
     });
     setShowModal(true);
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+    const confirmed = await confirmDialog.open();
+    if (!confirmed) return;
 
     try {
       await api.delete(`/use-cases/${id}`);
@@ -84,7 +111,7 @@ export function UseCasesManagementPage() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingUseCase(null);
-    setFormData({ name: "" });
+    reset();
   };
 
   if (loading) {
@@ -166,22 +193,14 @@ export function UseCasesManagementPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Use Case Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, name: e.target.value }))
-                  }
-                  required
-                  className="w-full px-3 py-2 bg-background text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ease-in-out placeholder:text-muted-foreground"
-                  placeholder="Enter use case name"
-                />
-              </div>
+            <form onSubmit={handleFormSubmit(onSubmit)} className="space-y-4">
+              <FormInput
+                label="Use Case Name"
+                required
+                {...register("name")}
+                error={errors.name?.message}
+                placeholder="Enter use case name"
+              />
 
               <div className="flex justify-end gap-2">
                 <button
@@ -193,15 +212,28 @@ export function UseCasesManagementPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 hover:shadow-md transition-all duration-150 ease-out"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 hover:shadow-md transition-all duration-150 ease-out disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {editingUseCase ? "Update" : "Create"}
+                  {isSubmitting ? "Saving..." : editingUseCase ? "Update" : "Create"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title="Delete Use Case"
+        message="Are you sure you want to delete this use case? This action cannot be undone."
+        variant="danger"
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDialog.confirm}
+        onCancel={confirmDialog.close}
+      />
     </div>
   );
 }
