@@ -350,8 +350,8 @@ All admin CRUD endpoints verified protected:
 
 **Steps:**
 1. Login to admin: http://localhost:5173/admin/login
-   - Email: `vibrationconnect@gmail.com`
-   - Password: `Cxserfd345!`
+   - Email: `xxxxxxxxxxxx`
+   - Password: `xxxxxxxxxxxx`
 2. Click "Categories" button
 3. Click "Add Category"
 4. Create a test category

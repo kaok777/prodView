@@ -343,7 +343,7 @@ These handle the anonymous authentication system for public users and session ma
 
 #### Mutations
 - **`setupFirstAdmin()`**: One-time setup for initial admin account
-  - Creates default admin: `vibrationconnect@gmail.com` / `Cxserfd345!`
+  - Creates default admin: `xxxxxxxxxxxx` / `xxxxxxxxxxxx`
   - Only works if no admins exist
   - Returns credentials for first login
 
@@ -1096,8 +1096,8 @@ Internal-only authentication helpers:
 
 **Location:** `convex/adminAuth.ts:201-202`
 ```typescript
-const defaultEmail = "vibrationconnect@gmail.com";
-const defaultPassword = "Cxserfd345!";
+const defaultEmail = "xxxxxxxxxxxx";
+const defaultPassword = "xxxxxxxxxxxx";
 ```
 
 **Impact:**

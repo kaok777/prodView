@@ -376,8 +376,8 @@ pkill -f node
 - **Admin Panel:** http://localhost:5173/admin/login
 
 ### Default Admin Credentials (Development Only)
-- **Email:** vibrationconnect@gmail.com
-- **Password:** Cxserfd345!
+- **Email:** xxxxxxxxxxxxx
+- **Password:** xxxxxxxxxxxx
 
 ⚠️ **Change these immediately in production!**
 

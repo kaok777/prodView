@@ -190,8 +190,8 @@ curl -X POST http://localhost:3000/api/auth/setup-first-admin \
 ```json
 {
   "adminId": "uuid-here",
-  "email": "vibrationconnect@gmail.com",
-  "password": "Cxserfd345!",
+  "email": "xxxxxxxxxxxx",
+  "password": "xxxxxxxxxxxx",
   "message": "First admin created successfully."
 }
 ```
@@ -204,8 +204,8 @@ curl -X POST http://localhost:3000/api/auth/setup-first-admin \
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "vibrationconnect@gmail.com",
-    "password": "Cxserfd345!"
+    "email": "xxxxxxxxxxxx",
+    "password": "xxxxxxxxxxxx"
   }'
 ```
 
@@ -213,7 +213,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 ```json
 {
   "adminId": "uuid-here",
-  "email": "vibrationconnect@gmail.com",
+  "email": "xxxxxxxxxxxx",
   "role": "admin",
   "accessToken": "jwt-token-here"
 }
@@ -294,8 +294,8 @@ PrismaClientInitializationError: Can't reach database server at `localhost:5432`
 **Security Warning**: Change these immediately after first login!
 
 ```
-Email: vibrationconnect@gmail.com
-Password: Cxserfd345!
+Email: xxxxxxxxxxxx
+Password: xxxxxxxxxxxx
 ```
 
 Location: `backend/src/auth/auth.service.ts:113-114`
@@ -482,8 +482,8 @@ curl -X POST http://localhost:3000/api/auth/setup-first-admin \
 ```json
 {
   "adminId": "uuid-here",
-  "email": "vibrationconnect@gmail.com",
-  "password": "Cxserfd345!",
+  "email": "xxxxxxxxxxxx",
+  "password": "xxxxxxxxxxxx",
   "message": "First admin created successfully."
 }
 ```
@@ -503,8 +503,8 @@ curl -X POST http://localhost:3000/api/auth/setup-first-admin \
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "vibrationconnect@gmail.com",
-    "password": "Cxserfd345!"
+    "email": "xxxxxxxxxxxx",
+    "password": "xxxxxxxxxxxx"
   }'
 ```
 
@@ -512,7 +512,7 @@ curl -X POST http://localhost:3000/api/auth/login \
 ```json
 {
   "adminId": "uuid-here",
-  "email": "vibrationconnect@gmail.com",
+  "email": "xxxxxxxxxxxx",
   "role": "admin",
   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
@@ -537,7 +537,7 @@ npm run dev
 **Steps:**
 1. Navigate to `http://localhost:5173/admin/login`
 2. Click "Setup Admin Account" button (if first time)
-3. Enter credentials: `vibrationconnect@gmail.com` / `Cxserfd345!`
+3. Enter credentials: `xxxxxxxxxxxx` / `xxxxxxxxxxxx`
 4. Click "Sign In"
 5. Should redirect to `/admin` dashboard
 

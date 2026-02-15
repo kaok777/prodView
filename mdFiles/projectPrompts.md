@@ -40,8 +40,8 @@ Default admin credentials are currently hardcoded in `backend/src/auth/auth.serv
 **Problem Description:**
 ```typescript
 // Current code (INSECURE):
-const defaultEmail = 'vibrationconnect@gmail.com';  // ❌ HARDCODED
-const defaultPassword = 'Cxserfd345!';               // ❌ HARDCODED
+const defaultEmail = 'xxxxxxxxxxxx';  // ❌ HARDCODED
+const defaultPassword = 'xxxxxxxxxxxx';               // ❌ HARDCODED
 ```
 
 This violates OWASP security principles and blocks production deployment.

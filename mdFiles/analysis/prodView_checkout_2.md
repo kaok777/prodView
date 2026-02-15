@@ -337,8 +337,8 @@ This means **every request** passes through JWT validation unless marked `@Publi
 - Endpoint: POST `/api/auth/setup-first-admin`
 - Only works if `adminUser` table is empty
 - Hardcoded credentials:
-  - Email: `vibrationconnect@gmail.com`
-  - Password: `Cxserfd345!`
+  - Email: `xxxxxxxxxxxx`
+  - Password: `xxxxxxxxxxxx`
 - **Security Risk:** Default credentials should be changed immediately
 
 **JWT Strategy** (`backend/src/auth/strategies/jwt.strategy.ts`)
@@ -961,8 +961,8 @@ Different service methods designed independently. `/latest` is simpler and doesn
 - `backend/prisma/seed.ts:15-16`
 
 **Credentials:**
-- Email: `vibrationconnect@gmail.com`
-- Password: `Cxserfd345!`
+- Email: `xxxxxxxxxxxx`
+- Password: `xxxxxxxxxxxx`
 
 **Issue:**
 These are the same across all deployments. A malicious actor could attempt these on any ProdView instance.

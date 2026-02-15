@@ -320,8 +320,8 @@ Admin can now login
 ```
 
 **Default Credentials** (from backend seed):
-- Email: `vibrationconnect@gmail.com`
-- Password: `Cxserfd345!`
+- Email: `xxxxxxxxxxxx`
+- Password: `xxxxxxxxxxxx`
 
 **⚠️ SECURITY CONCERN**: Hardcoded default credentials visible in codebase
 
@@ -1429,8 +1429,8 @@ images: String[]  // Array of URL strings
 - `backend/src/auth/auth.service.ts` (referenced in analysis)
 - `backend/prisma/seed.ts`:
   ```typescript
-  const defaultEmail = 'vibrationconnect@gmail.com';
-  const defaultPassword = 'Cxserfd345!';
+  const defaultEmail = 'xxxxxxxxxxxx';
+  const defaultPassword = 'xxxxxxxxxxxx';
   ```
 
 **Impact**:

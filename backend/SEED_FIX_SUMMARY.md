@@ -147,8 +147,8 @@ npm run db:seed
 ```
 Starting database seed...
 Created default admin user:
-Email: vibrationconnect@gmail.com
-Password: Cxserfd345!
+Email: xxxxxxxxxxxx
+Password: xxxxxxxxxxxx
 Admin ID: <uuid>
 Created 3 categories
 Created 3 use cases
@@ -170,7 +170,7 @@ npm run prisma:studio
 ```
 
 Then navigate to `http://localhost:5555` to view:
-- **AdminUser**: 1 admin with email `vibrationconnect@gmail.com`
+- **AdminUser**: 1 admin with email `xxxxxxxxxxxx`
 - **Category**: 3 categories (Electronics, Software, Services)
 - **UseCase**: 3 use cases (Business, Personal, Education)
 
@@ -254,8 +254,8 @@ psql -U postgres -d prodview -c "SELECT name FROM use_cases;"
 The seed script creates:
 
 1. **Default Admin User**:
-   - Email: `vibrationconnect@gmail.com`
-   - Password: `Cxserfd345!` (hashed with bcrypt, 12 salt rounds)
+   - Email: `xxxxxxxxxxxx`
+   - Password: `xxxxxxxxxxxx` (hashed with bcrypt, 12 salt rounds)
    - Role: `admin`
 
 2. **3 Categories**:
@@ -423,8 +423,8 @@ npm run db:seed
    ```
 
 5. **Test Login** with seeded credentials:
-   - Email: `vibrationconnect@gmail.com`
-   - Password: `Cxserfd345!`
+   - Email: `xxxxxxxxxxxx`
+   - Password: `xxxxxxxxxxxx`
 
 ---
 
