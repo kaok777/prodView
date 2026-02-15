@@ -3,15 +3,24 @@
 /**
  * Secure Admin Initialization Script
  *
- * This script creates the first admin user from environment variables.
+ * This script creates the first admin user through interactive prompts.
  * It should be run once during initial deployment.
  *
  * Usage:
  *   npm run create-admin
  *
+ * The script will prompt you to enter:
+ *   - Admin email address
+ *   - Admin password (must meet complexity requirements)
+ *
+ * Password Requirements:
+ *   - At least 8 characters
+ *   - At least one uppercase letter
+ *   - At least one lowercase letter
+ *   - At least one number
+ *   - At least one special character (!@#$%^&*(),.?":{}|<>)
+ *
  * Required Environment Variables:
- *   - ADMIN_EMAIL: Admin email address
- *   - ADMIN_PASSWORD: Admin password (must meet complexity requirements)
  *   - DATABASE_URL: PostgreSQL connection string
  */
 
@@ -72,20 +81,10 @@ async function createAdmin() {
       process.exit(1);
     }
 
-    let credentials: AdminCredentials;
-
-    // Try to get credentials from environment variables
-    if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
-      console.log('📋 Using credentials from environment variables\n');
-      credentials = {
-        email: process.env.ADMIN_EMAIL,
-        password: process.env.ADMIN_PASSWORD,
-      };
-    } else {
-      console.log('📋 Environment variables not found. Please enter credentials manually.\n');
-      credentials = await promptCredentials();
-      console.log('');
-    }
+    // Always prompt for credentials interactively
+    console.log('📋 Please enter admin credentials:\n');
+    const credentials = await promptCredentials();
+    console.log('');
 
     // Validate email
     if (!validateEmail(credentials.email)) {
