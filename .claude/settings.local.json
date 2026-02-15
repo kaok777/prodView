@@ -16,7 +16,9 @@
       "Bash(timeout 2 bash -c \"cat < /dev/null > /dev/tcp/localhost/5432\")",
       "Bash(chmod:*)",
       "Bash(wc -l src/**/*.{ts,tsx})",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(npm ls:*)",
+      "Bash(npm view:*)"
     ],
     "deny": [],
     "ask": []

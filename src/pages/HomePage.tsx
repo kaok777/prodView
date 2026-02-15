@@ -1,9 +1,16 @@
 import { Link } from "react-router-dom";
 import { SEOHead } from "../components/SEOHead";
 import { HeroCarousel } from "../components/HeroCarousel";
+import { generateWebSiteStructuredData, generateOrganizationStructuredData } from "../utils/seo";
 import { ArrowRight } from "lucide-react";
 
 export function HomePage() {
+  // Generate complete structured data for homepage
+  // Fixed: LOW-F5 - Complete structured data
+  const structuredData = [
+    generateWebSiteStructuredData(),
+    generateOrganizationStructuredData()
+  ];
 
   return (
     <>
@@ -11,6 +18,7 @@ export function HomePage() {
         title="ProdView - Discover Amazing Products"
         description="Find the perfect products for your needs. Browse by category, use case, or search for something specific. Affiliate disclosure: We may earn commissions from purchases."
         canonicalUrl={window.location.origin}
+        structuredData={structuredData}
       />
 
       <div className="space-y-0">

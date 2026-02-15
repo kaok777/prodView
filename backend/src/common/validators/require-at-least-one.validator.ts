@@ -26,13 +26,16 @@ export class RequireAtLeastOneConstraint implements ValidatorConstraintInterface
 /**
  * Utility function to validate update DTOs have at least one field
  * Can be used in service methods before processing updates
+ *
+ * Fixed: LOW-B5 - Error Message Leakage
+ * Removed internal field names from error messages
  */
 export function validateAtLeastOneField(dto: any, allowedFields: string[]): void {
   const hasField = allowedFields.some(field => dto[field] !== undefined);
 
   if (!hasField) {
     throw new BadRequestException(
-      `At least one field must be provided for update. Allowed fields: ${allowedFields.join(', ')}`
+      'At least one field must be provided for update'
     );
   }
 }

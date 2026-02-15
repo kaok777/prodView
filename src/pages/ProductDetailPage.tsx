@@ -7,7 +7,7 @@ import { FilterTag } from "../components/FilterTag";
 import { SEOHead } from "../components/SEOHead";
 import { useAnalytics, useAffiliateTracking } from "../hooks/useAnalytics";
 import { useCarousel } from "../hooks/useCarousel";
-import { generateProductStructuredData } from "../utils/seo";
+import { generateProductStructuredData, generateBreadcrumbStructuredData } from "../utils/seo";
 import { ErrorService } from "../services/ErrorService";
 import api, { BACKEND_BASE_URL } from "../lib/api";
 import type { ProductWithRelations, Product } from "../types";
@@ -154,7 +154,14 @@ export function ProductDetailPage() {
     ? `${BACKEND_BASE_URL}${product.images[0]}`
     : undefined;
 
-  const structuredData = generateProductStructuredData(product, imageUrl);
+  // Generate complete structured data including product and breadcrumbs
+  // Fixed: LOW-F5 - Complete structured data
+  const productStructuredData = generateProductStructuredData(product, imageUrl);
+  const breadcrumbStructuredData = generateBreadcrumbStructuredData([
+    { name: "Home", url: "/" },
+    { name: "Products", url: "/products" },
+    { name: product.name, url: `/products/${product.id}` }
+  ]);
 
   return (
     <>
@@ -162,8 +169,9 @@ export function ProductDetailPage() {
         title={`${product.name} - Product Details`}
         description={`${product.description} Affiliate link available. We may earn a commission at no cost to you.`}
         canonicalUrl={window.location.href}
-        structuredData={structuredData}
+        structuredData={[productStructuredData, breadcrumbStructuredData]}
         image={imageUrl}
+        type="product"
       />
 
       <div className="space-y-8">

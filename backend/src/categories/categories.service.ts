@@ -120,15 +120,16 @@ export class CategoriesService {
         depth++;
 
         // Prevent infinite loops and excessively deep hierarchies
+        // Fixed: LOW-B5 - Error Message Leakage (removed internal field references)
         if (depth > this.MAX_CATEGORY_DEPTH) {
           throw new BadRequestException(
-            `Cannot set parent: category hierarchy depth would exceed maximum of ${this.MAX_CATEGORY_DEPTH} levels`,
+            `Category hierarchy depth cannot exceed ${this.MAX_CATEGORY_DEPTH} levels`,
           );
         }
 
         if (currentParent.parentCategoryId === categoryId) {
           throw new BadRequestException(
-            'Cannot set parent: would create circular reference',
+            'Cannot create circular category hierarchy',
           );
         }
 
