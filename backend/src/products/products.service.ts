@@ -79,11 +79,26 @@ export class ProductsService {
     return result;
   }
 
+  /**
+   * Get product by ID with caching and status validation
+   * Fixed: HIGH-B2 - Missing NULL checks and status validation
+   * - Validates cached product is not null and still PUBLISHED
+   * - Invalidates stale cache if product status changed
+   */
   async getProductById(productId: string) {
     const cacheKey = `product:single:${productId}`;
-    const cached = this.cacheService.get(cacheKey);
+    const cached = this.cacheService.get(cacheKey) as any;
+
+    // Validate cached product before returning
     if (cached) {
-      return cached;
+      // Check if cached value is null or has invalid status
+      if (!cached || (cached.status && cached.status !== 'PUBLISHED')) {
+        // Invalidate stale cache
+        this.cacheService.delete(cacheKey);
+      } else {
+        // Valid cached product, return it
+        return cached;
+      }
     }
 
     const product = await this.prisma.product.findUnique({
@@ -465,8 +480,8 @@ export class ProductsService {
         { name: data.name },
       );
 
-      // Invalidate relevant caches
-      this.invalidateProductCaches();
+      // Invalidate relevant caches with product ID
+      this.invalidateProductCaches(product.id, 'product_created');
 
       return product;
     } catch (error: any) {
@@ -481,11 +496,29 @@ export class ProductsService {
   }
 
   /**
-   * Invalidate all product-related caches
-   * Called after any product mutation (create, update, delete)
+   * Invalidate product-related caches in a targeted manner
+   * Fixed: MEDIUM-B1 - Changed from blanket invalidation to targeted approach
+   *
+   * @param productId - Specific product ID to invalidate (optional)
+   * @param reason - Reason for invalidation (for monitoring)
    */
-  private invalidateProductCaches(): void {
-    this.cacheService.deletePattern('product:');
+  private invalidateProductCaches(productId?: string, reason?: string): void {
+    if (productId) {
+      // Targeted invalidation for specific product
+      this.cacheService.delete(`product:single:${productId}`);
+
+      // Log invalidation reason for monitoring
+      if (reason && process.env.NODE_ENV !== 'production') {
+        console.log(`[Cache Invalidation] Product ${productId}: ${reason}`);
+      }
+    }
+
+    // Always invalidate latest products list (affected by any product change)
+    this.cacheService.deletePattern('product:latest:');
+
+    // Note: Category and use case specific lists are NOT invalidated
+    // They will naturally expire via TTL and be refreshed on next request
+    // This prevents over-aggressive cache invalidation
   }
 
   async updateProduct(
@@ -677,8 +710,8 @@ export class ProductsService {
       },
     );
 
-    // Invalidate relevant caches
-    this.invalidateProductCaches();
+    // Invalidate relevant caches with product ID
+    this.invalidateProductCaches(productId, 'product_updated');
 
     return product;
   }
@@ -704,7 +737,7 @@ export class ProductsService {
       { name: product.name },
     );
 
-    // Invalidate relevant caches
-    this.invalidateProductCaches();
+    // Invalidate relevant caches with product ID
+    this.invalidateProductCaches(productId, 'product_deleted');
   }
 }

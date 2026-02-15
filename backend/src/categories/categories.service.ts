@@ -12,6 +12,7 @@ import { validateAtLeastOneField } from '../common/validators/require-at-least-o
 @Injectable()
 export class CategoriesService {
   private readonly CACHE_TTL = 600000; // 10 minutes
+  private readonly MAX_CATEGORY_DEPTH = 50; // Maximum allowed category hierarchy depth
 
   constructor(
     private prisma: PrismaService,
@@ -111,16 +112,30 @@ export class CategoriesService {
       }
 
       // Check for circular reference (parent's parent chain)
+      // Fixed: HIGH-B3 - Added MAX_DEPTH limit to prevent infinite loops
       let currentParent = parent;
+      let depth = 0;
+
       while (currentParent.parentCategoryId) {
+        depth++;
+
+        // Prevent infinite loops and excessively deep hierarchies
+        if (depth > this.MAX_CATEGORY_DEPTH) {
+          throw new BadRequestException(
+            `Cannot set parent: category hierarchy depth would exceed maximum of ${this.MAX_CATEGORY_DEPTH} levels`,
+          );
+        }
+
         if (currentParent.parentCategoryId === categoryId) {
           throw new BadRequestException(
             'Cannot set parent: would create circular reference',
           );
         }
+
         const nextParent = await this.prisma.category.findUnique({
           where: { id: currentParent.parentCategoryId },
         });
+
         if (!nextParent) break;
         currentParent = nextParent;
       }
