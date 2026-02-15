@@ -7,6 +7,7 @@ import { FilterTag } from "../components/FilterTag";
 import { SEOHead } from "../components/SEOHead";
 import { useAnalytics, useAffiliateTracking } from "../hooks/useAnalytics";
 import { generateProductStructuredData } from "../utils/seo";
+import { ErrorService } from "../services/ErrorService";
 import api, { BACKEND_BASE_URL } from "../lib/api";
 
 export function ProductDetailPage() {
@@ -24,17 +25,59 @@ export function ProductDetailPage() {
 
       try {
         setLoading(true);
-        const [productRes, relatedRes] = await Promise.all([
+
+        // Use Promise.allSettled to handle failures independently
+        // This allows showing the product even if related products fail
+        const results = await Promise.allSettled([
           api.get(`/products/${id}`),
           api.get('/products/latest', {
             params: { page: 1, pageSize: 5 }
           }),
         ]);
 
-        setProduct(productRes.data);
-        setRelatedProducts(relatedRes.data.products || []);
+        // Handle product result
+        if (results[0].status === 'fulfilled') {
+          setProduct(results[0].value.data);
+        } else {
+          // Product fetch failed - this is critical
+          console.error('Failed to fetch product:', results[0].reason);
+          ErrorService.handleApiError(
+            results[0].reason,
+            {
+              componentName: 'ProductDetailPage',
+              action: 'fetch_product',
+              metadata: { productId: id },
+            },
+            'Failed to load product details. Please try again.'
+          );
+          setProduct(null);
+        }
+
+        // Handle related products result (non-critical)
+        if (results[1].status === 'fulfilled') {
+          setRelatedProducts(results[1].value.data.products || []);
+        } else {
+          // Related products failed - log but don't show error to user
+          console.warn('Failed to fetch related products:', results[1].reason);
+          ErrorService.logError(
+            results[1].reason,
+            {
+              componentName: 'ProductDetailPage',
+              action: 'fetch_related_products',
+            }
+          );
+          setRelatedProducts([]);
+        }
       } catch (error) {
-        console.error('Failed to fetch product:', error);
+        // Unexpected error outside of API calls
+        console.error('Unexpected error in fetchData:', error);
+        ErrorService.handleApiError(
+          error,
+          {
+            componentName: 'ProductDetailPage',
+            action: 'fetch_data',
+          }
+        );
         setProduct(null);
       } finally {
         setLoading(false);

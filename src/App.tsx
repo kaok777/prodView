@@ -1,8 +1,10 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import { Toaster } from "sonner";
+import { useEffect } from "react";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Layout } from "./components/Layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
 import { HomePage } from "./pages/HomePage";
 import { ProductSelectionPage } from "./pages/ProductSelectionPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
@@ -13,74 +15,109 @@ import { AdminAnalytics } from "./pages/admin/AdminAnalytics";
 import { CategoriesManagementPage } from "./pages/admin/CategoriesManagementPage";
 import { UseCasesManagementPage } from "./pages/admin/UseCasesManagementPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { NavigationService } from "./services/NavigationService";
+
+/**
+ * Internal component to initialize NavigationService with navigate function
+ * Must be inside Router context to access useNavigate hook
+ */
+function NavigationServiceInitializer() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    NavigationService.setNavigate(navigate);
+  }, [navigate]);
+
+  return null;
+}
 
 export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <Router>
+          <NavigationServiceInitializer />
           <div className="min-h-screen bg-background text-foreground">
             <Routes>
             {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLoginPage />} />
+            <Route
+              path="/admin/login"
+              element={
+                <RouteErrorBoundary routeName="AdminLogin">
+                  <AdminLoginPage />
+                </RouteErrorBoundary>
+              }
+            />
             <Route
               path="/admin"
               element={
-                <ProtectedRoute>
-                  <Layout>
-                    <AdminDashboard />
-                  </Layout>
-                </ProtectedRoute>
+                <RouteErrorBoundary routeName="AdminDashboard">
+                  <ProtectedRoute>
+                    <Layout>
+                      <AdminDashboard />
+                    </Layout>
+                  </ProtectedRoute>
+                </RouteErrorBoundary>
               }
             />
             <Route
               path="/admin/analytics"
               element={
-                <ProtectedRoute>
-                  <Layout>
-                    <AdminAnalytics />
-                  </Layout>
-                </ProtectedRoute>
+                <RouteErrorBoundary routeName="AdminAnalytics">
+                  <ProtectedRoute>
+                    <Layout>
+                      <AdminAnalytics />
+                    </Layout>
+                  </ProtectedRoute>
+                </RouteErrorBoundary>
               }
             />
             <Route
               path="/admin/products/new"
               element={
-                <ProtectedRoute>
-                  <Layout>
-                    <ProductEditorPage />
-                  </Layout>
-                </ProtectedRoute>
+                <RouteErrorBoundary routeName="ProductEditor">
+                  <ProtectedRoute>
+                    <Layout>
+                      <ProductEditorPage />
+                    </Layout>
+                  </ProtectedRoute>
+                </RouteErrorBoundary>
               }
             />
             <Route
               path="/admin/products/:id/edit"
               element={
-                <ProtectedRoute>
-                  <Layout>
-                    <ProductEditorPage />
-                  </Layout>
-                </ProtectedRoute>
+                <RouteErrorBoundary routeName="ProductEditor">
+                  <ProtectedRoute>
+                    <Layout>
+                      <ProductEditorPage />
+                    </Layout>
+                  </ProtectedRoute>
+                </RouteErrorBoundary>
               }
             />
             <Route
               path="/admin/categories"
               element={
-                <ProtectedRoute>
-                  <Layout>
-                    <CategoriesManagementPage />
-                  </Layout>
-                </ProtectedRoute>
+                <RouteErrorBoundary routeName="CategoriesManagement">
+                  <ProtectedRoute>
+                    <Layout>
+                      <CategoriesManagementPage />
+                    </Layout>
+                  </ProtectedRoute>
+                </RouteErrorBoundary>
               }
             />
             <Route
               path="/admin/use-cases"
               element={
-                <ProtectedRoute>
-                  <Layout>
-                    <UseCasesManagementPage />
-                  </Layout>
-                </ProtectedRoute>
+                <RouteErrorBoundary routeName="UseCasesManagement">
+                  <ProtectedRoute>
+                    <Layout>
+                      <UseCasesManagementPage />
+                    </Layout>
+                  </ProtectedRoute>
+                </RouteErrorBoundary>
               }
             />
 
@@ -88,25 +125,31 @@ export default function App() {
             <Route
               path="/"
               element={
-                <Layout>
-                  <HomePage />
-                </Layout>
+                <RouteErrorBoundary routeName="HomePage">
+                  <Layout>
+                    <HomePage />
+                  </Layout>
+                </RouteErrorBoundary>
               }
             />
             <Route
               path="/products"
               element={
-                <Layout>
-                  <ProductSelectionPage />
-                </Layout>
+                <RouteErrorBoundary routeName="ProductSelection">
+                  <Layout>
+                    <ProductSelectionPage />
+                  </Layout>
+                </RouteErrorBoundary>
               }
             />
             <Route
               path="/products/:id"
               element={
-                <Layout>
-                  <ProductDetailPage />
-                </Layout>
+                <RouteErrorBoundary routeName="ProductDetail">
+                  <Layout>
+                    <ProductDetailPage />
+                  </Layout>
+                </RouteErrorBoundary>
               }
             />
             </Routes>

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import api from "../lib/api";
 import { useSidebarVisibility } from "../hooks/useSidebarVisibility";
 import { SidebarToggle } from "./SidebarToggle";
+import { ErrorService } from "../services/ErrorService";
 
 export function LeftSidebar() {
   const [activeTab, setActiveTab] = useState<"categories" | "useCases">("categories");
@@ -23,14 +24,54 @@ export function LeftSidebar() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [categoriesRes, useCasesRes] = await Promise.all([
+
+        // Use Promise.allSettled to handle failures independently
+        const results = await Promise.allSettled([
           api.get('/categories'),
           api.get('/use-cases'),
         ]);
-        setCategories(categoriesRes.data);
-        setUseCases(useCasesRes.data);
+
+        // Handle categories result
+        if (results[0].status === 'fulfilled') {
+          setCategories(results[0].value.data);
+        } else {
+          console.error('Failed to fetch categories:', results[0].reason);
+          ErrorService.handleApiError(
+            results[0].reason,
+            {
+              componentName: 'LeftSidebar',
+              action: 'fetch_categories',
+            },
+            'Failed to load categories. Please refresh the page.'
+          );
+          setCategories([]);
+        }
+
+        // Handle use cases result
+        if (results[1].status === 'fulfilled') {
+          setUseCases(results[1].value.data);
+        } else {
+          console.error('Failed to fetch use cases:', results[1].reason);
+          ErrorService.handleApiError(
+            results[1].reason,
+            {
+              componentName: 'LeftSidebar',
+              action: 'fetch_use_cases',
+            },
+            'Failed to load use cases. Please refresh the page.'
+          );
+          setUseCases([]);
+        }
       } catch (error) {
-        console.error('Failed to fetch sidebar data:', error);
+        console.error('Unexpected error in LeftSidebar:', error);
+        ErrorService.handleApiError(
+          error,
+          {
+            componentName: 'LeftSidebar',
+            action: 'fetch_data',
+          },
+          'Failed to load sidebar data. Please refresh the page.'
+        );
       } finally {
         setLoading(false);
       }

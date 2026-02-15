@@ -4,6 +4,7 @@ import { ProductImage } from "./ProductImage";
 import api from "../lib/api";
 import { useSidebarVisibility } from "../hooks/useSidebarVisibility";
 import { SidebarToggle } from "./SidebarToggle";
+import { ErrorService } from "../services/ErrorService";
 
 export function RightSidebar() {
   const [latestProducts, setLatestProducts] = useState<any[]>([]);
@@ -24,6 +25,14 @@ export function RightSidebar() {
         setLatestProducts(response.data.products || []);
       } catch (error) {
         console.error('Failed to fetch latest products:', error);
+        ErrorService.handleApiError(
+          error,
+          {
+            componentName: 'RightSidebar',
+            action: 'fetch_latest_products',
+          },
+          'Failed to load latest products. Please refresh the page.'
+        );
         setLatestProducts([]);
       } finally {
         setLoading(false);
