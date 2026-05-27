@@ -6,10 +6,9 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const token = StorageService.get<string>(StorageKeys.ACCESS_TOKEN);
   const adminSession = StorageService.get<string>(StorageKeys.ADMIN_SESSION);
 
-  if (!token || !adminSession) {
+  if (!adminSession) {
     return <Navigate to="/admin/login" replace />;
   }
 
