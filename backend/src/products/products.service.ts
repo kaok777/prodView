@@ -5,6 +5,9 @@ import { RateLimitService } from '../common/rate-limit.service';
 import { AuditService } from '../audit/audit.service';
 import { CacheService } from '../common/cache.service';
 import { validateAtLeastOneField } from '../common/validators/require-at-least-one.validator';
+import { FetchPreviewResponseDto } from './dto/fetch-preview.dto';
+import * as https from 'https';
+import * as http from 'http';
 
 @Injectable()
 export class ProductsService {
@@ -394,6 +397,11 @@ export class ProductsService {
       useCaseIds: string[];
       images: string[];
       status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+      sourceUrl?: string;
+      imageSource?: 'MANUAL_UPLOAD' | 'OG_FETCH';
+      descriptionSource?: 'MANUAL_UPLOAD' | 'OG_FETCH';
+      ogImageUrl?: string;
+      ogFetchStatus?: 'NOT_ATTEMPTED' | 'SUCCESS' | 'PARTIAL_SUCCESS' | 'FAILED';
     },
   ) {
     // Validate adminId exists
@@ -447,6 +455,13 @@ export class ProductsService {
           status: data.status || 'DRAFT',
           createdById: adminId,
           updatedById: adminId,
+          // Smart URL Preview fields
+          sourceUrl: data.sourceUrl,
+          imageSource: data.imageSource || 'MANUAL_UPLOAD',
+          descriptionSource: data.descriptionSource || 'MANUAL_UPLOAD',
+          ogImageUrl: data.ogImageUrl,
+          ogFetchedAt: data.ogFetchStatus === 'SUCCESS' || data.ogFetchStatus === 'PARTIAL_SUCCESS' ? new Date() : undefined,
+          ogFetchStatus: data.ogFetchStatus || 'NOT_ATTEMPTED',
           categories: {
             create: data.categoryIds.map((categoryId) => ({
               categoryId,
@@ -532,6 +547,11 @@ export class ProductsService {
       useCaseIds?: string[];
       images?: string[];
       status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+      sourceUrl?: string;
+      imageSource?: 'MANUAL_UPLOAD' | 'OG_FETCH';
+      descriptionSource?: 'MANUAL_UPLOAD' | 'OG_FETCH';
+      ogImageUrl?: string;
+      ogFetchStatus?: 'NOT_ATTEMPTED' | 'SUCCESS' | 'PARTIAL_SUCCESS' | 'FAILED';
     },
   ) {
     // Validate at least one field is provided
@@ -542,7 +562,12 @@ export class ProductsService {
       'categoryIds',
       'useCaseIds',
       'images',
-      'status'
+      'status',
+      'sourceUrl',
+      'imageSource',
+      'descriptionSource',
+      'ogImageUrl',
+      'ogFetchStatus'
     ]);
 
     const existingProduct = await this.prisma.product.findUnique({
@@ -679,6 +704,27 @@ export class ProductsService {
       updateData.status = data.status;
     }
 
+    // Smart URL Preview fields
+    if (data.sourceUrl !== undefined) {
+      updateData.sourceUrl = data.sourceUrl;
+    }
+    if (data.imageSource !== undefined) {
+      updateData.imageSource = data.imageSource;
+    }
+    if (data.descriptionSource !== undefined) {
+      updateData.descriptionSource = data.descriptionSource;
+    }
+    if (data.ogImageUrl !== undefined) {
+      updateData.ogImageUrl = data.ogImageUrl;
+    }
+    if (data.ogFetchStatus !== undefined) {
+      updateData.ogFetchStatus = data.ogFetchStatus;
+      // Update ogFetchedAt timestamp when status is updated to success/partial success
+      if (data.ogFetchStatus === 'SUCCESS' || data.ogFetchStatus === 'PARTIAL_SUCCESS') {
+        updateData.ogFetchedAt = new Date();
+      }
+    }
+
     // Note: Relations are updated separately above via differential updates
     // No need to include categories/useCases in updateData
 
@@ -739,5 +785,189 @@ export class ProductsService {
 
     // Invalidate relevant caches with product ID
     this.invalidateProductCaches(productId, 'product_deleted');
+  }
+
+  /**
+   * Fetch Open Graph preview data from a vendor product URL
+   * Extracts og:title, og:description, og:image with fallbacks
+   *
+   * @param url - The vendor product URL to fetch OG tags from
+   * @returns Preview data with success status and extracted fields
+   */
+  async fetchPreview(url: string): Promise<FetchPreviewResponseDto> {
+    try {
+      // Validate URL
+      const urlValidation = this.validationService.validateInput('url', url);
+      if (!urlValidation.valid) {
+        return {
+          success: false,
+          title: null,
+          description: null,
+          imageUrl: null,
+          failedFields: ['title', 'description', 'image'],
+          error: 'Invalid URL format',
+        };
+      }
+
+      // Fetch HTML with 10 second timeout
+      const html = await this.fetchHtmlWithTimeout(url, 10000);
+
+      // Extract OG tags and fallbacks
+      const title = this.extractOgTag(html, 'og:title') || this.extractHtmlTitle(html);
+      const description = this.extractOgTag(html, 'og:description') || this.extractMetaDescription(html);
+      const imageUrl = this.extractOgTag(html, 'og:image') || this.extractFirstImage(html);
+
+      // Determine which fields failed
+      const failedFields: string[] = [];
+      if (!title) failedFields.push('title');
+      if (!description) failedFields.push('description');
+      if (!imageUrl) failedFields.push('image');
+
+      const success = failedFields.length === 0;
+
+      return {
+        success,
+        title,
+        description,
+        imageUrl,
+        failedFields,
+      };
+    } catch (error: any) {
+      // Handle network errors, timeouts, blocked requests
+      return {
+        success: false,
+        title: null,
+        description: null,
+        imageUrl: null,
+        failedFields: ['title', 'description', 'image'],
+        error: error.message || 'Failed to fetch URL',
+      };
+    }
+  }
+
+  /**
+   * Fetch HTML content from URL with timeout
+   */
+  private fetchHtmlWithTimeout(url: string, timeoutMs: number): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const urlObj = new URL(url);
+      const protocol = urlObj.protocol === 'https:' ? https : http;
+
+      const request = protocol.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; ProdViewBot/1.0)',
+          'Accept': 'text/html,application/xhtml+xml',
+        },
+        timeout: timeoutMs,
+      }, (response) => {
+        // Handle redirects
+        if (response.statusCode === 301 || response.statusCode === 302) {
+          const redirectUrl = response.headers.location;
+          if (redirectUrl) {
+            this.fetchHtmlWithTimeout(redirectUrl, timeoutMs).then(resolve).catch(reject);
+            return;
+          }
+        }
+
+        if (response.statusCode !== 200) {
+          reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+          return;
+        }
+
+        let html = '';
+        response.setEncoding('utf8');
+        response.on('data', (chunk) => { html += chunk; });
+        response.on('end', () => resolve(html));
+      });
+
+      request.on('error', reject);
+      request.on('timeout', () => {
+        request.destroy();
+        reject(new Error('Request timeout'));
+      });
+    });
+  }
+
+  /**
+   * Extract Open Graph meta tag content
+   */
+  private extractOgTag(html: string, property: string): string | null {
+    const regex = new RegExp(`<meta[^>]*property=["']${property}["'][^>]*content=["']([^"']+)["'][^>]*>`, 'i');
+    const match = html.match(regex);
+    if (match && match[1]) {
+      return this.decodeHtmlEntities(match[1].trim());
+    }
+
+    // Try alternative order: content first, then property
+    const altRegex = new RegExp(`<meta[^>]*content=["']([^"']+)["'][^>]*property=["']${property}["'][^>]*>`, 'i');
+    const altMatch = html.match(altRegex);
+    if (altMatch && altMatch[1]) {
+      return this.decodeHtmlEntities(altMatch[1].trim());
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract HTML title tag as fallback
+   */
+  private extractHtmlTitle(html: string): string | null {
+    const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (match && match[1]) {
+      return this.decodeHtmlEntities(match[1].trim());
+    }
+    return null;
+  }
+
+  /**
+   * Extract meta description as fallback
+   */
+  private extractMetaDescription(html: string): string | null {
+    const regex = /<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i;
+    const match = html.match(regex);
+    if (match && match[1]) {
+      return this.decodeHtmlEntities(match[1].trim());
+    }
+
+    // Try alternative order
+    const altRegex = /<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["'][^>]*>/i;
+    const altMatch = html.match(altRegex);
+    if (altMatch && altMatch[1]) {
+      return this.decodeHtmlEntities(altMatch[1].trim());
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract first prominent image as fallback
+   */
+  private extractFirstImage(html: string): string | null {
+    const regex = /<img[^>]*src=["']([^"']+)["'][^>]*>/i;
+    const match = html.match(regex);
+    if (match && match[1]) {
+      const src = match[1].trim();
+      // Only return if it looks like a full URL (not relative path)
+      if (src.startsWith('http://') || src.startsWith('https://')) {
+        return src;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Decode common HTML entities
+   */
+  private decodeHtmlEntities(text: string): string {
+    const entities: Record<string, string> = {
+      '&amp;': '&',
+      '&lt;': '<',
+      '&gt;': '>',
+      '&quot;': '"',
+      '&#39;': "'",
+      '&apos;': "'",
+    };
+
+    return text.replace(/&[^;]+;/g, (entity) => entities[entity] || entity);
   }
 }

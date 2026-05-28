@@ -13,6 +13,32 @@ export enum ProductStatus {
 }
 
 /**
+ * Image source enum (for smart URL preview feature)
+ */
+export enum ImageSource {
+  MANUAL_UPLOAD = 'MANUAL_UPLOAD',
+  OG_FETCH = 'OG_FETCH',
+}
+
+/**
+ * Content source enum (for smart URL preview feature)
+ */
+export enum ContentSource {
+  MANUAL_UPLOAD = 'MANUAL_UPLOAD',
+  OG_FETCH = 'OG_FETCH',
+}
+
+/**
+ * OG fetch status enum
+ */
+export enum OgFetchStatus {
+  NOT_ATTEMPTED = 'NOT_ATTEMPTED',
+  SUCCESS = 'SUCCESS',
+  PARTIAL_SUCCESS = 'PARTIAL_SUCCESS',
+  FAILED = 'FAILED',
+}
+
+/**
  * Base Product type (matches database schema)
  */
 export interface Product {
@@ -27,6 +53,13 @@ export interface Product {
   updatedAt: Date | string;
   createdById: string;
   updatedById: string;
+  // Smart URL Preview fields
+  sourceUrl?: string | null;
+  imageSource?: ImageSource;
+  descriptionSource?: ContentSource;
+  ogImageUrl?: string | null;
+  ogFetchedAt?: Date | string | null;
+  ogFetchStatus?: OgFetchStatus;
 }
 
 /**
@@ -173,6 +206,18 @@ export interface LoginResponse {
   adminId: string;
   email: string;
   role: string;
+}
+
+/**
+ * Fetch preview response (for smart URL preview feature)
+ */
+export interface FetchPreviewResponse {
+  success: boolean;
+  title: string | null;
+  description: string | null;
+  imageUrl: string | null;
+  failedFields: string[];
+  error?: string;
 }
 
 /**

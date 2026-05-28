@@ -20,6 +20,14 @@ model Product {
   createdById String
   updatedById String
 
+  // Smart URL Preview Feature Fields
+  sourceUrl         String?  // Vendor product URL used for fetching OG tags
+  imageSource       ImageSource @default(MANUAL_UPLOAD)
+  descriptionSource ContentSource @default(MANUAL_UPLOAD)
+  ogImageUrl        String?  // External OG image URL if using OG fetch
+  ogFetchedAt       DateTime? // Last successful OG fetch timestamp
+  ogFetchStatus     OgFetchStatus @default(NOT_ATTEMPTED)
+
   createdBy   AdminUser @relation("ProductCreatedBy", fields: [createdById], references: [id])
   updatedBy   AdminUser @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
 
@@ -32,6 +40,7 @@ model Product {
   @@index([views])
   @@index([status, createdAt])
   @@index([status, views])
+  @@index([ogFetchStatus])
   @@map("products")
 }
 
@@ -177,4 +186,21 @@ enum ProductStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
+}
+
+enum ImageSource {
+  MANUAL_UPLOAD
+  OG_FETCH
+}
+
+enum ContentSource {
+  MANUAL_UPLOAD
+  OG_FETCH
+}
+
+enum OgFetchStatus {
+  NOT_ATTEMPTED
+  SUCCESS
+  PARTIAL_SUCCESS
+  FAILED
 }

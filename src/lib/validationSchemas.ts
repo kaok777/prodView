@@ -54,6 +54,29 @@ export const productSchema = z.object({
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED'], {
     errorMap: () => ({ message: 'Invalid product status' }),
   }),
+
+  // Smart URL Preview fields (optional)
+  sourceUrl: z
+    .string()
+    .url('Source URL must be a valid URL')
+    .refine(
+      (url) => url.startsWith('http://') || url.startsWith('https://'),
+      'URL must start with http:// or https://'
+    )
+    .optional()
+    .or(z.literal('')),
+
+  imageSource: z.enum(['MANUAL_UPLOAD', 'OG_FETCH']).optional(),
+
+  descriptionSource: z.enum(['MANUAL_UPLOAD', 'OG_FETCH']).optional(),
+
+  ogImageUrl: z
+    .string()
+    .url('OG image URL must be a valid URL')
+    .optional()
+    .or(z.literal('')),
+
+  ogFetchStatus: z.enum(['NOT_ATTEMPTED', 'SUCCESS', 'PARTIAL_SUCCESS', 'FAILED']).optional(),
 });
 
 export type ProductFormData = z.infer<typeof productSchema>;

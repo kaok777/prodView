@@ -19,6 +19,7 @@ import { Public, CurrentUser, Roles } from '../common/decorators';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PaginationDto, LimitDto, SearchDto } from '../common/dto/pagination.dto';
+import { FetchPreviewDto } from './dto/fetch-preview.dto';
 
 /**
  * ProductsController
@@ -124,6 +125,13 @@ export class ProductsController {
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string
   ) {
     return this.productsService.getProductByIdAdmin(id);
+  }
+
+  @Roles('admin')
+  @Post('fetch-preview')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  fetchPreview(@Body() fetchPreviewDto: FetchPreviewDto) {
+    return this.productsService.fetchPreview(fetchPreviewDto.url);
   }
 
   @Public()
