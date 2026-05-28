@@ -5,6 +5,8 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { Layout } from "./components/Layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
+import { CookieBanner } from "./components/CookieBanner";
+import { CookiePreferencesModal } from "./components/CookiePreferencesModal";
 import { HomePage } from "./pages/HomePage";
 import { ProductSelectionPage } from "./pages/ProductSelectionPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
@@ -17,6 +19,13 @@ import { CategoriesManagementPage } from "./pages/admin/CategoriesManagementPage
 import { UseCasesManagementPage } from "./pages/admin/UseCasesManagementPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { NavigationService } from "./services/NavigationService";
+import { PrivacyPolicyPage } from "./pages/legal/PrivacyPolicyPage";
+import { CookiePolicyPage } from "./pages/legal/CookiePolicyPage";
+import { TermsPage } from "./pages/legal/TermsPage";
+import { AffiliateDisclosurePage } from "./pages/legal/AffiliateDisclosurePage";
+import { DisclaimerPage } from "./pages/legal/DisclaimerPage";
+import { ExternalLinksNoticePage } from "./pages/legal/ExternalLinksNoticePage";
+import { PopiaContactPage } from "./pages/legal/PopiaContactPage";
 
 /**
  * Internal component to initialize NavigationService with navigate function
@@ -154,6 +163,78 @@ export default function App() {
               }
             />
 
+            {/* Legal Pages */}
+            <Route
+              path="/privacy-policy"
+              element={
+                <RouteErrorBoundary routeName="PrivacyPolicy">
+                  <Layout>
+                    <PrivacyPolicyPage />
+                  </Layout>
+                </RouteErrorBoundary>
+              }
+            />
+            <Route
+              path="/cookie-policy"
+              element={
+                <RouteErrorBoundary routeName="CookiePolicy">
+                  <Layout>
+                    <CookiePolicyPage />
+                  </Layout>
+                </RouteErrorBoundary>
+              }
+            />
+            <Route
+              path="/terms"
+              element={
+                <RouteErrorBoundary routeName="Terms">
+                  <Layout>
+                    <TermsPage />
+                  </Layout>
+                </RouteErrorBoundary>
+              }
+            />
+            <Route
+              path="/affiliate-disclosure"
+              element={
+                <RouteErrorBoundary routeName="AffiliateDisclosure">
+                  <Layout>
+                    <AffiliateDisclosurePage />
+                  </Layout>
+                </RouteErrorBoundary>
+              }
+            />
+            <Route
+              path="/disclaimer"
+              element={
+                <RouteErrorBoundary routeName="Disclaimer">
+                  <Layout>
+                    <DisclaimerPage />
+                  </Layout>
+                </RouteErrorBoundary>
+              }
+            />
+            <Route
+              path="/external-links"
+              element={
+                <RouteErrorBoundary routeName="ExternalLinks">
+                  <Layout>
+                    <ExternalLinksNoticePage />
+                  </Layout>
+                </RouteErrorBoundary>
+              }
+            />
+            <Route
+              path="/popia"
+              element={
+                <RouteErrorBoundary routeName="PopiaContact">
+                  <Layout>
+                    <PopiaContactPage />
+                  </Layout>
+                </RouteErrorBoundary>
+              }
+            />
+
             {/* 404 Catch-All Route */}
             <Route
               path="*"
@@ -167,6 +248,8 @@ export default function App() {
             />
             </Routes>
             <Toaster />
+            <CookieBanner />
+            <CookiePreferencesModal />
           </div>
         </Router>
       </ThemeProvider>

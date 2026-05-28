@@ -136,4 +136,5 @@ export const StorageKeys = {
   THEME: 'theme',
   LEFT_SIDEBAR_VISITED: 'left-sidebar-visited',
   RIGHT_SIDEBAR_VISITED: 'right-sidebar-visited',
+  CONSENT_PREFERENCES: 'consent_preferences',
 } as const;

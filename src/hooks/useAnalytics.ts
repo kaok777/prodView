@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import api from "../lib/api";
+import { useConsent } from "../contexts/ConsentContext";
 
 /**
  * Generates a cryptographically secure session ID
@@ -24,11 +25,19 @@ function getSessionId(): string {
 }
 
 export function useAnalytics() {
+  const { preferences } = useConsent();
+
   const track = useCallback(async (
     eventType: string,
     entityId?: string,
     metadata?: Record<string, any>
   ) => {
+    // GDPR/POPIA Compliance: Check consent before tracking
+    if (!preferences?.analytics) {
+      console.log('[Analytics] Tracking skipped - no user consent:', eventType);
+      return;
+    }
+
     try {
       await api.post('/analytics/track', {
         eventType,
@@ -39,7 +48,7 @@ export function useAnalytics() {
     } catch (error) {
       console.warn("Analytics tracking failed:", error);
     }
-  }, []);
+  }, [preferences]);
 
   return { track };
 }
