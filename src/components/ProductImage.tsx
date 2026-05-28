@@ -1,24 +1,36 @@
 import { BACKEND_BASE_URL } from "../lib/api";
+import { ImageSource } from "../types/models";
 
 interface ProductImageProps {
   imagePath: string;
   alt: string;
   className?: string;
+  imageSource?: ImageSource;
+  ogImageUrl?: string | null;
 }
 
 /**
  * ProductImage Component
  *
- * Renders product images with proper URL construction and fallback handling.
+ * Renders product images with support for both uploaded images and OG-fetched external images.
  *
  * Contract:
- * - imagePath: Expected to start with "/" (e.g., "/uploads/uuid.png")
- * - Full URL: BACKEND_BASE_URL + imagePath (e.g., "http://localhost:3000/uploads/uuid.png")
+ * - imagePath: Expected to start with "/" (e.g., "/uploads/uuid.png") for uploaded images
+ * - imageSource: 'MANUAL_UPLOAD' (default) or 'OG_FETCH'
+ * - ogImageUrl: External URL for OG-fetched images
+ * - Full URL (uploaded): BACKEND_BASE_URL + imagePath (e.g., "http://localhost:3000/uploads/uuid.png")
+ * - Full URL (OG): ogImageUrl (e.g., "https://vendor.com/image.jpg")
  * - Fallback: Renders a muted div if imagePath is empty/null
- * - Error handling: Shows SVG placeholder on load error
+ * - Error handling: Shows SVG placeholder on load error (e.g., broken OG image)
  */
-export function ProductImage({ imagePath, alt, className = "" }: ProductImageProps) {
-  if (!imagePath) {
+export function ProductImage({
+  imagePath,
+  alt,
+  className = "",
+  imageSource = "MANUAL_UPLOAD",
+  ogImageUrl
+}: ProductImageProps) {
+  if (!imagePath && !ogImageUrl) {
     return (
       <div
         className={`bg-muted flex items-center justify-center ${className}`}
@@ -41,11 +53,14 @@ export function ProductImage({ imagePath, alt, className = "" }: ProductImagePro
     );
   }
 
-  const imageUrl = `${BACKEND_BASE_URL}${imagePath}`;
+  // Determine actual image source
+  const imageSrc = imageSource === 'OG_FETCH' && ogImageUrl
+    ? ogImageUrl // Use external OG URL
+    : `${BACKEND_BASE_URL}${imagePath}`; // Use uploaded image
 
   return (
     <img
-      src={imageUrl}
+      src={imageSrc}
       alt={alt}
       className={className}
       loading="lazy"

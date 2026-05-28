@@ -44,6 +44,8 @@ export class ProductsService {
       this.prisma.product.findMany({
         where: {
           status: 'PUBLISHED',
+          // Hide products with failed OG fetches from public view
+          ogFetchStatus: { not: 'FAILED' },
         },
         orderBy: {
           createdAt: 'desc',
@@ -66,6 +68,7 @@ export class ProductsService {
       this.prisma.product.count({
         where: {
           status: 'PUBLISHED',
+          ogFetchStatus: { not: 'FAILED' },
         },
       }),
     ]);
@@ -120,7 +123,8 @@ export class ProductsService {
       },
     });
 
-    if (!product || product.status !== 'PUBLISHED') {
+    // Hide products that are not published OR have failed OG fetches
+    if (!product || product.status !== 'PUBLISHED' || product.ogFetchStatus === 'FAILED') {
       return null;
     }
 
@@ -176,6 +180,7 @@ export class ProductsService {
       this.prisma.product.findMany({
         where: {
           status: 'PUBLISHED',
+          ogFetchStatus: { not: 'FAILED' },
           OR: [
             {
               name: {
@@ -209,6 +214,7 @@ export class ProductsService {
       this.prisma.product.count({
         where: {
           status: 'PUBLISHED',
+          ogFetchStatus: { not: 'FAILED' },
           OR: [
             {
               name: {
@@ -254,6 +260,7 @@ export class ProductsService {
       this.prisma.product.findMany({
         where: {
           status: 'PUBLISHED',
+          ogFetchStatus: { not: 'FAILED' },
           categories: {
             some: {
               categoryId,
@@ -279,6 +286,7 @@ export class ProductsService {
       this.prisma.product.count({
         where: {
           status: 'PUBLISHED',
+          ogFetchStatus: { not: 'FAILED' },
           categories: {
             some: {
               categoryId,
@@ -318,6 +326,7 @@ export class ProductsService {
       this.prisma.product.findMany({
         where: {
           status: 'PUBLISHED',
+          ogFetchStatus: { not: 'FAILED' },
           useCases: {
             some: {
               useCaseId,
@@ -343,6 +352,7 @@ export class ProductsService {
       this.prisma.product.count({
         where: {
           status: 'PUBLISHED',
+          ogFetchStatus: { not: 'FAILED' },
           useCases: {
             some: {
               useCaseId,

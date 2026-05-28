@@ -8,7 +8,7 @@ export class FetchPreviewDto {
   @IsUrl({}, { message: 'sourceUrl must be a valid URL' })
   @IsString()
   @IsNotEmpty({ message: 'sourceUrl is required' })
-  url: string;
+  url!: string;
 }
 
 /**
@@ -16,10 +16,10 @@ export class FetchPreviewDto {
  * Returns OG tag data extracted from the URL
  */
 export class FetchPreviewResponseDto {
-  success: boolean;
-  title: string | null;
-  description: string | null;
-  imageUrl: string | null;
-  failedFields: string[]; // Array of fields that failed to fetch (e.g., ['image', 'description'])
+  success!: boolean;
+  title!: string | null;
+  description!: string | null;
+  imageUrl!: string | null;
+  failedFields!: string[]; // Array of fields that failed to fetch (e.g., ['image', 'description'])
   error?: string; // Optional error message if fetch completely failed
 }

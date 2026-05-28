@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Plus, Edit, Trash2, Eye, BarChart3, Folder, Tag } from "lucide-react";
 import { ProductImage } from "../../components/ProductImage";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { SourceBadge } from "../../components/admin/SourceBadge";
 import api from "../../lib/api";
 import type { Product } from "../../types";
 
@@ -179,6 +180,7 @@ export function AdminDashboard() {
               <tr>
                 <th className="text-left p-4 font-medium">Product</th>
                 <th className="text-left p-4 font-medium">Status</th>
+                <th className="text-left p-4 font-medium">Source</th>
                 <th className="text-left p-4 font-medium">Created</th>
                 <th className="text-left p-4 font-medium">Actions</th>
               </tr>
@@ -186,7 +188,7 @@ export function AdminDashboard() {
             <tbody>
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={5} className="p-8 text-center text-muted-foreground">
                     No products found.
                   </td>
                 </tr>
@@ -201,6 +203,8 @@ export function AdminDashboard() {
                               imagePath={product.images[0]}
                               alt={product.name}
                               className="w-full h-full object-cover"
+                              imageSource={product.imageSource}
+                              ogImageUrl={product.ogImageUrl}
                             />
                           )}
                         </div>
@@ -222,6 +226,14 @@ export function AdminDashboard() {
                       }`}>
                         {product.status.toLowerCase()}
                       </span>
+                    </td>
+                    <td className="p-4">
+                      <SourceBadge
+                        imageSource={product.imageSource}
+                        descriptionSource={product.descriptionSource}
+                        ogFetchStatus={product.ogFetchStatus}
+                        compact
+                      />
                     </td>
                     <td className="p-4 text-sm text-muted-foreground">
                       {new Date(product.createdAt).toLocaleDateString()}

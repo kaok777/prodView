@@ -19,6 +19,8 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
                 imagePath={product.images[0]}
                 alt={product.name}
                 className="w-full h-full object-cover"
+                imageSource={product.imageSource}
+                ogImageUrl={product.ogImageUrl}
               />
             )}
           </div>
@@ -63,6 +65,8 @@ export function ProductCard({ product, view = "grid" }: ProductCardProps) {
             imagePath={product.images[0]}
             alt={product.name}
             className="w-full h-full object-cover"
+            imageSource={product.imageSource}
+            ogImageUrl={product.ogImageUrl}
           />
         )}
       </div>
