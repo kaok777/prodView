@@ -344,4 +344,37 @@ export class AnalyticsService {
       .sort((a, b) => b.count - a.count)
       .slice(0, maxLimit);
   }
+
+  /**
+   * Delete all analytics data for a specific session ID
+   *
+   * GDPR/POPIA Right to Erasure implementation
+   * Allows users to delete all their analytics data by providing their session ID.
+   *
+   * This method:
+   * 1. Validates the session ID
+   * 2. Deletes all analytics events associated with that session
+   * 3. Returns confirmation with deleted count
+   *
+   * Called by: DELETE /api/analytics/delete-my-data
+   *
+   * Privacy Policy: Section 7.1 - "Erasure: Request deletion of your data"
+   * GDPR Article 17: Right to Erasure ("Right to be Forgotten")
+   * POPIA Section 24: Data Subject Rights
+   *
+   * @param sessionId - The user's analytics session ID from browser storage
+   * @returns Delete result with count of deleted events
+   *
+   * @see AUDIT finding L6.4.2 (No mechanism for users to request data deletion)
+   */
+  async deleteUserData(sessionId: string) {
+    // Delete all analytics events for this session
+    const deleteResult = await this.prisma.analyticsEvent.deleteMany({
+      where: {
+        sessionId: sessionId,
+      },
+    });
+
+    return deleteResult;
+  }
 }

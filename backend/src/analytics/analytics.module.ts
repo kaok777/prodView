@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
+import { AnalyticsCleanupService } from './analytics-cleanup.service';
 import { PrismaService } from '../common/prisma.service';
 import { RateLimitService } from '../common/rate-limit.service';
 import { ValidationService } from '../common/validation.service';
@@ -9,6 +10,7 @@ import { ValidationService } from '../common/validation.service';
   controllers: [AnalyticsController],
   providers: [
     AnalyticsService,
+    AnalyticsCleanupService,
     PrismaService,
     RateLimitService,
     ValidationService,
