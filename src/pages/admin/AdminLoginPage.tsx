@@ -101,3 +101,5 @@ export function AdminLoginPage() {
     </div>
   );
 }
+
+export default AdminLoginPage;

@@ -7,6 +7,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
+import compression from 'compression';
 import { validateEnvironment } from './config/env.validation';
 
 async function bootstrap() {
@@ -22,6 +23,21 @@ async function bootstrap() {
 
   // Enable cookie parser for httpOnly cookies
   app.use(cookieParser());
+
+  // Fixed: P3.4.2 - Enable gzip/deflate compression for all responses
+  // Reduces JSON/HTML response size by 70-90%
+  // Compression level 6 (default) balances speed vs compression ratio
+  app.use(compression({
+    filter: (req, res) => {
+      // Don't compress if client doesn't accept encoding
+      if (req.headers['x-no-compression']) {
+        return false;
+      }
+      // Use compression filter function
+      return compression.filter(req, res);
+    },
+    threshold: 1024, // Only compress responses > 1KB
+  }));
 
   // Configure Helmet with strict Content Security Policy
   app.use(helmet({

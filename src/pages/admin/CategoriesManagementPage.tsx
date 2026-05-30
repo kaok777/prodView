@@ -267,3 +267,5 @@ export function CategoriesManagementPage() {
     </div>
   );
 }
+
+export default CategoriesManagementPage;

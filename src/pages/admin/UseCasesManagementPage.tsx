@@ -237,3 +237,5 @@ export function UseCasesManagementPage() {
     </div>
   );
 }
+
+export default UseCasesManagementPage;

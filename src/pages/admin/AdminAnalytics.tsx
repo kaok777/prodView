@@ -176,3 +176,5 @@ export function AdminAnalytics() {
     </div>
   );
 }
+
+export default AdminAnalytics;

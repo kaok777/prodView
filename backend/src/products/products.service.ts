@@ -549,24 +549,43 @@ export class ProductsService {
 
   /**
    * Invalidate product-related caches in a targeted manner
-   * Fixed: MEDIUM-B1 - Changed from blanket invalidation to targeted approach
+   * Fixed: P3.3.1 - Improved from blanket invalidation to surgical approach
+   *
+   * Cache invalidation strategy:
+   * - Product UPDATE: Only invalidate single product cache (not lists)
+   * - Product CREATE/DELETE: Invalidate first page of latest products only
+   * - Other pages expire naturally via TTL (prevents cache stampede)
    *
    * @param productId - Specific product ID to invalidate (optional)
-   * @param reason - Reason for invalidation (for monitoring)
+   * @param reason - Reason for invalidation: 'product_created', 'product_updated', 'product_deleted'
    */
   private invalidateProductCaches(productId?: string, reason?: string): void {
+    // Always invalidate single product cache if provided
     if (productId) {
-      // Targeted invalidation for specific product
       this.cacheService.delete(`product:single:${productId}`);
 
-      // Log invalidation reason for monitoring
+      // Log invalidation for monitoring
       if (reason && process.env.NODE_ENV !== 'production') {
         console.log(`[Cache Invalidation] Product ${productId}: ${reason}`);
       }
     }
 
-    // Always invalidate latest products list (affected by any product change)
-    this.cacheService.deletePattern('product:latest:');
+    // Surgical invalidation based on operation type
+    if (reason === 'product_created' || reason === 'product_deleted') {
+      // Only invalidate FIRST PAGE of latest products (page 1)
+      // Other pages will naturally expire via TTL
+      // This prevents cache stampede when updating a typo in product description
+      this.cacheService.delete('product:latest:page:1:size:40');
+      this.cacheService.delete('product:latest:page:1:size:20'); // Also clear mobile page size
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[Cache Invalidation] Invalidated first page only: ${reason}`);
+      }
+    }
+
+    // For product_updated: Don't invalidate list caches at all
+    // Product list caches will naturally refresh via TTL
+    // Single product cache already invalidated above
 
     // Note: Category and use case specific lists are NOT invalidated
     // They will naturally expire via TTL and be refreshed on next request
@@ -828,6 +847,9 @@ export class ProductsService {
    * Fetch Open Graph preview data from a vendor product URL
    * Extracts og:title, og:description, og:image with fallbacks
    *
+   * Fixed: P3.3.2 - Added 24-hour caching to prevent repeated fetches
+   * Cache key: og-fetch:${urlHash} (hash prevents long key issues)
+   *
    * @param url - The vendor product URL to fetch OG tags from
    * @returns Preview data with success status and extracted fields
    */
@@ -846,6 +868,20 @@ export class ProductsService {
         };
       }
 
+      // Check cache first (24-hour TTL to prevent repeated fetches)
+      // Hash URL to create safe cache key (URLs can be very long)
+      const crypto = require('crypto');
+      const urlHash = crypto.createHash('sha256').update(url).digest('hex');
+      const cacheKey = `og-fetch:${urlHash}`;
+
+      const cachedResult = this.cacheService.get<FetchPreviewResponseDto>(cacheKey);
+      if (cachedResult) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`[OG Cache Hit] ${url.substring(0, 50)}...`);
+        }
+        return cachedResult;
+      }
+
       // Fetch HTML with 10 second timeout
       const html = await this.fetchHtmlWithTimeout(url, 10000);
 
@@ -862,13 +898,23 @@ export class ProductsService {
 
       const success = failedFields.length === 0;
 
-      return {
+      const result: FetchPreviewResponseDto = {
         success,
         title,
         description,
         imageUrl,
         failedFields,
       };
+
+      // Cache result for 24 hours (86400 seconds)
+      // Prevents repeated fetches when admin previews the same URL multiple times
+      this.cacheService.set(cacheKey, result, 86400);
+
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[OG Cache Set] ${url.substring(0, 50)}... (24h TTL)`);
+      }
+
+      return result;
     } catch (error: any) {
       // Handle network errors, timeouts, blocked requests
       return {

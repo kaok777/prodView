@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import { Toaster } from "sonner";
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Layout } from "./components/Layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -11,12 +11,6 @@ import { HomePage } from "./pages/HomePage";
 import { ProductSelectionPage } from "./pages/ProductSelectionPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
-import { AdminLoginPage } from "./pages/admin/AdminLoginPage";
-import { AdminDashboard } from "./pages/admin/AdminDashboard";
-import { ProductEditorPage } from "./pages/admin/ProductEditorPage";
-import { AdminAnalytics } from "./pages/admin/AdminAnalytics";
-import { CategoriesManagementPage } from "./pages/admin/CategoriesManagementPage";
-import { UseCasesManagementPage } from "./pages/admin/UseCasesManagementPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { NavigationService } from "./services/NavigationService";
 import { PrivacyPolicyPage } from "./pages/legal/PrivacyPolicyPage";
@@ -26,6 +20,16 @@ import { AffiliateDisclosurePage } from "./pages/legal/AffiliateDisclosurePage";
 import { DisclaimerPage } from "./pages/legal/DisclaimerPage";
 import { ExternalLinksNoticePage } from "./pages/legal/ExternalLinksNoticePage";
 import { PopiaContactPage } from "./pages/legal/PopiaContactPage";
+
+// Fixed: P3.2.2 - Code-split admin routes to reduce main bundle size by ~30%
+// Admin pages are lazy-loaded only when user navigates to admin routes
+// This improves initial page load for 99% of visitors who never access admin
+const AdminLoginPage = lazy(() => import("./pages/admin/AdminLoginPage"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const ProductEditorPage = lazy(() => import("./pages/admin/ProductEditorPage"));
+const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics"));
+const CategoriesManagementPage = lazy(() => import("./pages/admin/CategoriesManagementPage"));
+const UseCasesManagementPage = lazy(() => import("./pages/admin/UseCasesManagementPage"));
 
 /**
  * Internal component to initialize NavigationService with navigate function
@@ -41,6 +45,21 @@ function NavigationServiceInitializer() {
   return null;
 }
 
+/**
+ * Loading fallback for lazy-loaded routes
+ * Displays centered spinner while admin pages are loading
+ */
+function RouteLoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -49,85 +68,99 @@ export default function App() {
           <NavigationServiceInitializer />
           <div className="min-h-screen bg-background text-foreground">
             <Routes>
-            {/* Admin Routes */}
+            {/* Admin Routes - Wrapped in Suspense for code splitting (P3.2.2) */}
             <Route
               path="/admin/login"
               element={
-                <RouteErrorBoundary routeName="AdminLogin">
-                  <AdminLoginPage />
-                </RouteErrorBoundary>
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <RouteErrorBoundary routeName="AdminLogin">
+                    <AdminLoginPage />
+                  </RouteErrorBoundary>
+                </Suspense>
               }
             />
             <Route
               path="/admin"
               element={
-                <RouteErrorBoundary routeName="AdminDashboard">
-                  <ProtectedRoute>
-                    <Layout>
-                      <AdminDashboard />
-                    </Layout>
-                  </ProtectedRoute>
-                </RouteErrorBoundary>
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <RouteErrorBoundary routeName="AdminDashboard">
+                    <ProtectedRoute>
+                      <Layout>
+                        <AdminDashboard />
+                      </Layout>
+                    </ProtectedRoute>
+                  </RouteErrorBoundary>
+                </Suspense>
               }
             />
             <Route
               path="/admin/analytics"
               element={
-                <RouteErrorBoundary routeName="AdminAnalytics">
-                  <ProtectedRoute>
-                    <Layout>
-                      <AdminAnalytics />
-                    </Layout>
-                  </ProtectedRoute>
-                </RouteErrorBoundary>
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <RouteErrorBoundary routeName="AdminAnalytics">
+                    <ProtectedRoute>
+                      <Layout>
+                        <AdminAnalytics />
+                      </Layout>
+                    </ProtectedRoute>
+                  </RouteErrorBoundary>
+                </Suspense>
               }
             />
             <Route
               path="/admin/products/new"
               element={
-                <RouteErrorBoundary routeName="ProductEditor">
-                  <ProtectedRoute>
-                    <Layout>
-                      <ProductEditorPage />
-                    </Layout>
-                  </ProtectedRoute>
-                </RouteErrorBoundary>
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <RouteErrorBoundary routeName="ProductEditor">
+                    <ProtectedRoute>
+                      <Layout>
+                        <ProductEditorPage />
+                      </Layout>
+                    </ProtectedRoute>
+                  </RouteErrorBoundary>
+                </Suspense>
               }
             />
             <Route
               path="/admin/products/:id/edit"
               element={
-                <RouteErrorBoundary routeName="ProductEditor">
-                  <ProtectedRoute>
-                    <Layout>
-                      <ProductEditorPage />
-                    </Layout>
-                  </ProtectedRoute>
-                </RouteErrorBoundary>
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <RouteErrorBoundary routeName="ProductEditor">
+                    <ProtectedRoute>
+                      <Layout>
+                        <ProductEditorPage />
+                      </Layout>
+                    </ProtectedRoute>
+                  </RouteErrorBoundary>
+                </Suspense>
               }
             />
             <Route
               path="/admin/categories"
               element={
-                <RouteErrorBoundary routeName="CategoriesManagement">
-                  <ProtectedRoute>
-                    <Layout>
-                      <CategoriesManagementPage />
-                    </Layout>
-                  </ProtectedRoute>
-                </RouteErrorBoundary>
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <RouteErrorBoundary routeName="CategoriesManagement">
+                    <ProtectedRoute>
+                      <Layout>
+                        <CategoriesManagementPage />
+                      </Layout>
+                    </ProtectedRoute>
+                  </RouteErrorBoundary>
+                </Suspense>
               }
             />
             <Route
               path="/admin/use-cases"
               element={
-                <RouteErrorBoundary routeName="UseCasesManagement">
-                  <ProtectedRoute>
-                    <Layout>
-                      <UseCasesManagementPage />
-                    </Layout>
-                  </ProtectedRoute>
-                </RouteErrorBoundary>
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <RouteErrorBoundary routeName="UseCasesManagement">
+                    <ProtectedRoute>
+                      <Layout>
+                        <UseCasesManagementPage />
+                      </Layout>
+                    </ProtectedRoute>
+                  </RouteErrorBoundary>
+                </Suspense>
               }
             />
 

@@ -616,3 +616,5 @@ export function ProductEditorPage() {
     </div>
   );
 }
+
+export default ProductEditorPage;

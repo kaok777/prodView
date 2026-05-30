@@ -12,6 +12,9 @@ model Product {
   name        String
   description String
   affiliateUrl String
+  // P3.1.2: Array fields cannot be indexed in Prisma/PostgreSQL
+  // If image-based queries are needed, normalize to ProductImage table
+  // See AUDIT_FIX_LOG.md P3.1.2 for details
   images      String[]
   views       Int      @default(0)
   status      ProductStatus @default(DRAFT)
@@ -41,6 +44,9 @@ model Product {
   @@index([status, createdAt])
   @@index([status, views])
   @@index([ogFetchStatus])
+  // Fixed: P3.1.3 - Added affiliateUrl index for vendor-based queries and uniqueness checks
+  // Enables efficient filtering by vendor domain and affiliate link validation
+  @@index([affiliateUrl])
   @@map("products")
 }
 
@@ -165,6 +171,9 @@ model AnalyticsEvent {
   // This index optimizes: GROUP BY entityId WHERE eventType = X ORDER BY COUNT(*) DESC
   @@index([eventType, entityId, timestamp])
   @@index([eventType, timestamp])
+  // Fixed: P3.1.1 - Added sessionId index for session-based analytics queries
+  // Enables efficient filtering and grouping by sessionId for user tracking
+  @@index([sessionId])
   @@map("analytics_events")
 }
 
