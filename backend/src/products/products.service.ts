@@ -4,6 +4,7 @@ import { ValidationService } from '../common/validation.service';
 import { RateLimitService } from '../common/rate-limit.service';
 import { AuditService } from '../audit/audit.service';
 import { CacheService } from '../common/cache.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { validateAtLeastOneField } from '../common/validators/require-at-least-one.validator';
 import { FetchPreviewResponseDto } from './dto/fetch-preview.dto';
 import * as https from 'https';
@@ -24,6 +25,7 @@ export class ProductsService {
     private rateLimitService: RateLimitService,
     private auditService: AuditService,
     private cacheService: CacheService,
+    private analyticsService: AnalyticsService,
   ) {}
 
   async getLatestProducts(pageSize: number = 40, page: number = 1) {
@@ -150,8 +152,26 @@ export class ProductsService {
     });
   }
 
-  async searchProducts(keyword: string, page: number = 1, pageSize: number = 100, ip?: string) {
-    const rateLimitKey = `search:${ip || 'unknown'}`;
+  /**
+   * Search for products by keyword
+   * @param keyword Search query string
+   * @param page Page number (1-indexed)
+   * @param pageSize Number of results per page
+   * @param ip Client IP address for rate limiting
+   * @param sessionId Optional session ID for analytics tracking
+   * @returns Paginated search results
+   */
+  async searchProducts(
+    keyword: string,
+    page: number = 1,
+    pageSize: number = 100,
+    ip?: string,
+    sessionId?: string,
+  ) {
+    // F2.5.2: Trim keyword BEFORE validation and rate limiting to prevent bypass with padded keywords
+    const trimmedKeyword = keyword.trim();
+
+    const rateLimitKey = `search:${trimmedKeyword || 'empty'}:${ip || 'unknown'}`;
     const rateCheck = await this.rateLimitService.checkRateLimit(
       rateLimitKey,
       60 * 1000,
@@ -162,18 +182,25 @@ export class ProductsService {
       throw new BadRequestException('Search rate limit exceeded. Please slow down.');
     }
 
-    const validation = this.validationService.validateInput('text', keyword);
+    const validation = this.validationService.validateInput('text', trimmedKeyword);
     if (!validation.valid) {
       throw new BadRequestException('Invalid search query');
     }
 
-    if (keyword.length > 100) {
+    if (trimmedKeyword.length > 100) {
       throw new BadRequestException('Search query too long');
     }
 
     await this.rateLimitService.recordAttempt(rateLimitKey, ip);
 
-    const trimmedKeyword = keyword.trim();
+    // Track search event for analytics (F2.1.3 - Popular Searches dashboard)
+    // Fire-and-forget: don't wait for tracking to complete, to avoid slowing down search
+    this.analyticsService
+      .trackEvent('search', undefined, { query: trimmedKeyword }, sessionId || '', ip)
+      .catch((error) => {
+        console.error('[Search] Failed to track search event:', error);
+      });
+
     const skip = (page - 1) * pageSize;
 
     const [products, total] = await Promise.all([

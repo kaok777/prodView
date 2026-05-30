@@ -102,7 +102,8 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: false,
       },
-      disableErrorMessages: isProduction,
+      // F2.7.2: Always disable detailed error messages (even in dev) to prevent schema info exposure
+      disableErrorMessages: true,
       validationError: {
         target: false,
         value: false,

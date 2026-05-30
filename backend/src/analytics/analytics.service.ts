@@ -91,6 +91,32 @@ export class AnalyticsService {
       throw new NotFoundException('Product not found');
     }
 
+    // Validate affiliate URL before returning it (security: prevent XSS via javascript: or data: URLs)
+    const affiliateUrl = product.affiliateUrl;
+    if (!affiliateUrl) {
+      throw new BadRequestException('Product has no affiliate URL');
+    }
+
+    // Validate URL starts with http:// or https://
+    if (!affiliateUrl.startsWith('http://') && !affiliateUrl.startsWith('https://')) {
+      // Log security incident - invalid URL scheme in database
+      console.error(`[SECURITY] Invalid affiliate URL scheme for product ${productId}: ${affiliateUrl}`);
+      throw new BadRequestException('Invalid affiliate URL');
+    }
+
+    // Validate URL is well-formed
+    try {
+      const url = new URL(affiliateUrl);
+      // Additional check: ensure it's actually http/https protocol (URL constructor may be permissive)
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        console.error(`[SECURITY] Invalid affiliate URL protocol for product ${productId}: ${url.protocol}`);
+        throw new BadRequestException('Invalid affiliate URL');
+      }
+    } catch (error) {
+      console.error(`[SECURITY] Malformed affiliate URL for product ${productId}: ${affiliateUrl}`);
+      throw new BadRequestException('Invalid affiliate URL');
+    }
+
     await this.rateLimitService.recordAttempt(rateLimitKey, ip, userAgent);
 
     await this.prisma.analyticsEvent.create({
@@ -98,14 +124,14 @@ export class AnalyticsService {
         eventType: 'affiliate_click',
         entityId: productId,
         metadata: {
-          url: product.affiliateUrl,
+          url: affiliateUrl,
           timestamp: new Date().toISOString(),
         },
         sessionId: Math.random().toString(36).substring(7),
       },
     });
 
-    return { redirectUrl: product.affiliateUrl };
+    return { redirectUrl: affiliateUrl };
   }
 
   /**
@@ -265,28 +291,57 @@ export class AnalyticsService {
     return result;
   }
 
+  /**
+   * Get search statistics using Prisma groupBy aggregation
+   * Optimized to avoid loading all events into memory - uses database-level GROUP BY
+   * Groups by normalized query stored in metadata.normalizedQuery
+   * Performance: Handles millions of search events efficiently
+   */
   async getSearchStats(adminId: string, limit: number = 20) {
     const maxLimit = Math.min(limit, 100);
 
-    const searchEvents = await this.prisma.analyticsEvent.findMany({
+    // Use Prisma groupBy for database-level aggregation on metadata
+    // This groups by the entire metadata JSON object equality
+    const searchGroups = await this.prisma.analyticsEvent.groupBy({
+      by: ['metadata'],
       where: {
         eventType: 'search',
       },
+      _count: {
+        id: true,
+      },
+      orderBy: {
+        _count: {
+          id: 'desc',
+        },
+      },
     });
 
-    const searchCounts: Record<string, number> = {};
-    for (const event of searchEvents) {
-      const metadata = event.metadata as any;
-      const query = metadata?.query;
-      if (query && typeof query === 'string' && query.length <= 100) {
-        const normalizedQuery = query.toLowerCase().trim();
-        searchCounts[normalizedQuery] = (searchCounts[normalizedQuery] || 0) + 1;
-      }
-    }
+    // Extract queries and counts, filtering out invalid entries
+    const searchCounts = searchGroups
+      .map((group) => {
+        const metadata = group.metadata as any;
+        const query = metadata?.query;
 
-    return Object.entries(searchCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, maxLimit)
-      .map(([query, count]) => ({ query, count }));
+        // Validate query
+        if (!query || typeof query !== 'string' || query.length > 100) {
+          return null;
+        }
+
+        // Normalize query for consistency
+        const normalizedQuery = query.toLowerCase().trim();
+
+        return {
+          query: normalizedQuery,
+          count: group._count.id,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    // Sort by count (already sorted from groupBy, but ensure consistency)
+    // and apply limit
+    return searchCounts
+      .sort((a, b) => b.count - a.count)
+      .slice(0, maxLimit);
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import { ProductCard } from "../components/ProductCard";
@@ -95,16 +95,21 @@ export function ProductDetailPage() {
     fetchData();
   }, [id]);
 
+  // Track product view only once per product ID (F2.1.1: prevent double-counting on re-renders)
+  const trackedProductId = useRef<string | null>(null);
+
   useEffect(() => {
-    if (product) {
+    if (product && product.id !== trackedProductId.current) {
       track("product_view", product.id);
+      trackedProductId.current = product.id;
     }
-  }, [product, track]);
+  }, [product?.id, track]); // Depend on product.id, not entire product object
 
   const handleAffiliateClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (product) {
-      trackClick(product.id);
+      // Pass fallbackUrl to ensure window opens even if tracking API is slow (F2.1.2)
+      trackClick(product.id, product.affiliateUrl);
     }
   };
 

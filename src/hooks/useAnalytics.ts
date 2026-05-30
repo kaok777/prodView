@@ -54,17 +54,47 @@ export function useAnalytics() {
 }
 
 export function useAffiliateTracking() {
-  const trackClick = useCallback(async (productId: string) => {
+  const trackClick = useCallback(async (productId: string, fallbackUrl?: string) => {
     try {
-      const response = await api.post('/analytics/affiliate-click', {
+      // F2.1.2: Race API call against 2-second timeout to prevent lost clicks
+      const timeoutPromise = new Promise<null>((resolve) => {
+        setTimeout(() => {
+          console.warn('[Analytics] Affiliate tracking timeout (>2s) - opening window without waiting');
+          resolve(null);
+        }, 2000);
+      });
+
+      const apiPromise = api.post('/analytics/affiliate-click', {
         productId,
       });
 
-      if (response.data?.redirectUrl) {
+      // Wait for whichever completes first: API response or 2-second timeout
+      const response = await Promise.race([apiPromise, timeoutPromise]);
+
+      if (response && response.data?.redirectUrl) {
+        // API succeeded within timeout - open URL from response (validated URL from backend)
         window.open(response.data.redirectUrl, '_blank', 'noopener,noreferrer');
+      } else if (!response && fallbackUrl) {
+        // Timeout occurred - open fallback URL to ensure user can proceed
+        console.warn('[Analytics] Opening affiliate link with fallback URL due to timeout');
+        window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+      } else if (!response) {
+        console.error('[Analytics] Tracking timeout and no fallback URL provided');
+      }
+
+      // If timeout won, continue tracking in background (fire-and-forget)
+      if (!response) {
+        apiPromise.catch(error => {
+          console.warn('[Analytics] Background affiliate tracking failed:', error);
+        });
       }
     } catch (error) {
-      console.warn("Affiliate tracking failed:", error);
+      console.warn('[Analytics] Affiliate tracking failed:', error);
+      // On error, use fallback URL if available to ensure user can proceed
+      if (fallbackUrl) {
+        console.warn('[Analytics] Opening affiliate link with fallback URL due to error');
+        window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+      }
     }
   }, []);
 

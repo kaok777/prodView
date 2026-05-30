@@ -5,6 +5,7 @@ import { diskStorage } from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import { extname, basename } from 'path';
 import { UploadController } from './upload.controller';
+import { ImageProcessingService } from './image-processing.service';
 
 @Module({
   imports: [
@@ -68,5 +69,6 @@ import { UploadController } from './upload.controller';
     }),
   ],
   controllers: [UploadController],
+  providers: [ImageProcessingService],
 })
 export class UploadModule {}

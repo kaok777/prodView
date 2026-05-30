@@ -68,6 +68,7 @@ export class ProductsController {
       searchDto.page || 1,
       searchDto.pageSize || 20,
       ip,
+      searchDto.sessionId,
     );
   }
 

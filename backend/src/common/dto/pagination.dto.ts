@@ -41,4 +41,9 @@ export class SearchDto extends PaginationDto {
     message: 'Search keyword contains invalid characters',
   })
   keyword?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Session ID must be a string' })
+  @MaxLength(100, { message: 'Session ID must not exceed 100 characters' })
+  sessionId?: string;
 }
