@@ -1,16 +1,23 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/AuthContext";
 import { Search, Moon, Sun, X, LogOut } from "lucide-react";
-import { getAdminSession, clearAdminSession } from "../utils/security";
+import api from "../lib/api";
 
+/**
+ * Navbar - Site-wide navigation component
+ *
+ * Fixed: Admin Session Consistency Bug
+ * Now uses reactive auth context for consistent admin state across all pages
+ */
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
+  const { session, clearAuth } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const session = getAdminSession();
   const isAdminRoute = location.pathname.startsWith("/admin");
 
   const handleSearch = (e: React.FormEvent) => {
@@ -21,9 +28,18 @@ export function Navbar() {
     }
   };
 
-  const handleLogout = () => {
-    clearAdminSession();
-    navigate("/admin/login");
+  const handleLogout = async () => {
+    try {
+      // Call backend logout to clear httpOnly cookies
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Continue with local logout even if API call fails
+    } finally {
+      // Clear local session state
+      clearAuth();
+      navigate("/admin/login");
+    }
   };
 
   return (

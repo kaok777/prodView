@@ -14,10 +14,13 @@ interface ProductImageProps {
  *
  * Renders product images with support for both uploaded images and OG-fetched external images.
  *
+ * Fixed: UX5.3.1 - Ensures meaningful alt text for accessibility (WCAG 2.1 A compliance)
+ *
  * Contract:
  * - imagePath: Expected to start with "/" (e.g., "/uploads/uuid.png") for uploaded images
  * - imageSource: 'MANUAL_UPLOAD' (default) or 'OG_FETCH'
  * - ogImageUrl: External URL for OG-fetched images
+ * - alt: Descriptive text for screen readers (required, fallback provided if empty)
  * - Full URL (uploaded): BACKEND_BASE_URL + imagePath (e.g., "http://localhost:3000/uploads/uuid.png")
  * - Full URL (OG): ogImageUrl (e.g., "https://vendor.com/image.jpg")
  * - Fallback: Renders a muted div if imagePath is empty/null
@@ -30,6 +33,9 @@ export function ProductImage({
   imageSource = "MANUAL_UPLOAD",
   ogImageUrl
 }: ProductImageProps) {
+  // Fixed: UX5.3.1 - Ensure alt text is never empty
+  // If alt is empty/whitespace, provide meaningful fallback
+  const altText = alt?.trim() || "Product image";
   if (!imagePath && !ogImageUrl) {
     return (
       <div
@@ -61,13 +67,15 @@ export function ProductImage({
   return (
     <img
       src={imageSrc}
-      alt={alt}
+      alt={altText}
       className={className}
       loading="lazy"
       onError={(e) => {
         const target = e.target as HTMLImageElement;
         target.onerror = null; // Prevent infinite loop
         target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23e5e7eb" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%239ca3af" font-family="sans-serif" font-size="12"%3EImage Error%3C/text%3E%3C/svg%3E';
+        // Update alt text to indicate broken image
+        target.alt = `${altText} (image unavailable)`;
       }}
     />
   );

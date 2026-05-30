@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { NavigationService } from '../services/NavigationService';
 import { ErrorService } from '../services/ErrorService';
-import { StorageService, StorageKeys } from '../services/StorageService';
+import { clearAuthGlobally } from '../contexts/AuthContext';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
@@ -57,9 +57,12 @@ api.interceptors.response.use(
         // Retry the original request
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, redirect to login with state preservation
+        // Refresh failed, clear auth and redirect to login
         isRefreshing = false;
-        StorageService.remove(StorageKeys.ADMIN_SESSION);
+
+        // Fixed: Admin Session Consistency Bug
+        // Use clearAuthGlobally to update both context and localStorage
+        clearAuthGlobally();
 
         const currentPath = window.location.pathname;
         if (currentPath.startsWith('/admin') && currentPath !== '/admin/login') {

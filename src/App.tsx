@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-route
 import { Toaster } from "sonner";
 import { useEffect, lazy, Suspense } from "react";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import { Layout } from "./components/Layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
@@ -64,10 +65,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <Router>
-          <NavigationServiceInitializer />
-          <div className="min-h-screen bg-background text-foreground">
-            <Routes>
+        <AuthProvider>
+          <Router>
+            <NavigationServiceInitializer />
+            <div className="min-h-screen bg-background text-foreground">
+              <Routes>
             {/* Admin Routes - Wrapped in Suspense for code splitting (P3.2.2) */}
             <Route
               path="/admin/login"
@@ -279,12 +281,13 @@ export default function App() {
                 </RouteErrorBoundary>
               }
             />
-            </Routes>
-            <Toaster />
-            <CookieBanner />
-            <CookiePreferencesModal />
-          </div>
-        </Router>
+              </Routes>
+              <Toaster />
+              <CookieBanner />
+              <CookiePreferencesModal />
+            </div>
+          </Router>
+        </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

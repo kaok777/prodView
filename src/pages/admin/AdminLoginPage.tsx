@@ -2,9 +2,15 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
-import { setAdminSession } from "../../utils/security";
+import { useAuth } from "../../contexts/AuthContext";
 import api from "../../lib/api";
 
+/**
+ * AdminLoginPage - Admin authentication page
+ *
+ * Fixed: Admin Session Consistency Bug
+ * Now uses reactive auth context for consistent session state
+ */
 export function AdminLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -12,6 +18,7 @@ export function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { setAuth } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,8 +28,8 @@ export function AdminLoginPage() {
       const response = await api.post('/auth/login', { email, password });
       const userData = response.data;
 
-      // Store only non-sensitive session data for UI purposes
-      setAdminSession(userData);
+      // Store session data in auth context (also persists to localStorage)
+      setAuth(userData);
 
       toast.success("Login successful");
       navigate("/admin");
