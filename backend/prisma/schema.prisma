@@ -177,19 +177,10 @@ model AnalyticsEvent {
   @@map("analytics_events")
 }
 
-model RateLimit {
-  // Fixed: LOW-B4 - Changed to composite primary key for better uniqueness
-  // Note: This model is now deprecated (rate limiting moved to in-memory)
-  // but kept for backward compatibility during migration
-  id        String   @id @default(uuid())
-  key       String
-  timestamp DateTime @default(now())
-  ip        String?
-  userAgent String?
-
-  @@index([key, timestamp])
-  @@map("rate_limits")
-}
+// Fixed: CQ4.2.1 - Removed deprecated RateLimit model
+// Rate limiting has been fully migrated to in-memory implementation
+// (see backend/src/common/rate-limit.service.ts)
+// Database table no longer used - migration will drop the table
 
 enum ProductStatus {
   DRAFT

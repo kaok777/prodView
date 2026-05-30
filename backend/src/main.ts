@@ -9,6 +9,7 @@ import { rateLimit } from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import compression from 'compression';
 import { validateEnvironment } from './config/env.validation';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
 async function bootstrap() {
   // Validate environment variables before starting
@@ -151,6 +152,44 @@ async function bootstrap() {
   app.use(require('express').json({ limit: maxBodySize }));
   app.use(require('express').urlencoded({ extended: true, limit: maxBodySize }));
 
+  // Fixed: CQ4.5.1 - Configure Swagger/OpenAPI documentation
+  // Available at /api-docs in development and production
+  // Add @ApiProperty() decorators to DTOs and @ApiOperation() to controllers for complete docs
+  if (!isProduction || process.env.ENABLE_SWAGGER === 'true') {
+    const config = new DocumentBuilder()
+      .setTitle('ProdView API')
+      .setDescription('Affiliate Marketing Platform API - Product catalog, analytics, and admin management')
+      .setVersion('1.0')
+      .addTag('products', 'Product catalog endpoints')
+      .addTag('categories', 'Category management')
+      .addTag('use-cases', 'Use case management')
+      .addTag('analytics', 'Analytics and tracking')
+      .addTag('auth', 'Authentication and authorization')
+      .addTag('upload', 'File upload endpoints')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          name: 'JWT',
+          description: 'Enter JWT token',
+          in: 'header',
+        },
+        'JWT-auth',
+      )
+      .addCookieAuth('accessToken', {
+        type: 'apiKey',
+        in: 'cookie',
+        name: 'accessToken',
+      })
+      .build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api-docs', app, document);
+
+    console.log('Swagger documentation available at /api-docs');
+  }
+
   const port = configService.get<number>('PORT', 3000);
   await app.listen(port);
 
@@ -160,3 +199,20 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+// Fixed: CQ4.3.1 - Global error handlers for unhandled promise rejections
+// Prevents Node.js process crashes from uncaught async errors
+process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
+  console.error('🔴 Unhandled Promise Rejection:', reason);
+  console.error('Promise:', promise);
+  // In production, you might want to:
+  // 1. Log to external monitoring service (Sentry, DataDog, etc.)
+  // 2. Send alert to development team
+  // 3. Optionally: process.exit(1) to restart process via PM2/Docker
+});
+
+process.on('uncaughtException', (error: Error) => {
+  console.error('🔴 Uncaught Exception:', error);
+  // Critical error - log and exit gracefully
+  process.exit(1);
+});

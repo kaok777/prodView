@@ -383,16 +383,259 @@ npm run test
 npm run test
 ```
 
-## 🚢 Deployment
+## 🚢 Production Deployment
 
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions for:
+### Pre-Deployment Checklist
 
-- VPS/Cloud deployment (DigitalOcean, AWS, etc.)
-- Docker deployment
-- Environment configuration
-- Database setup
-- SSL/TLS configuration
-- CI/CD pipelines
+See [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md) for the complete deployment checklist.
+
+**Quick Checklist:**
+- [ ] All environment variables configured for production
+- [ ] Strong JWT_SECRET (32+ characters, randomly generated)
+- [ ] Database connection pooling configured (5-10 connections)
+- [ ] Default admin credentials changed
+- [ ] CORS_ORIGIN set to production domain
+- [ ] NODE_ENV=production
+- [ ] SSL/TLS certificates obtained and configured
+- [ ] CDN configured for static files (optional but recommended)
+- [ ] Monitoring and error tracking set up
+
+### Production Build
+
+**1. Build Backend:**
+```bash
+cd backend
+npm ci --production
+npm run prisma:generate
+npm run build
+```
+
+**2. Build Frontend:**
+```bash
+npm ci --production
+npm run build
+# Output: dist/ directory (serves via CDN or reverse proxy)
+```
+
+### Database Migrations
+
+**⚠️ IMPORTANT**: Always backup database before running migrations in production!
+
+```bash
+cd backend
+
+# Backup database first
+pg_dump prodview > backup_$(date +%Y%m%d_%H%M%S).sql
+
+# Run migrations
+npm run prisma:deploy
+```
+
+### Environment Variables (Production)
+
+**Backend:**
+```bash
+DATABASE_URL="postgresql://user:password@host:5432/prodview?connection_limit=10"
+JWT_SECRET="<64-character-random-string>"
+JWT_EXPIRATION="24h"
+PORT=3000
+NODE_ENV="production"
+CORS_ORIGIN="https://yourdomain.com"
+UPLOAD_DIR="./uploads"
+MAX_FILE_SIZE=10485760
+ENABLE_SWAGGER="false"  # Disable Swagger in production for security
+```
+
+**Frontend:**
+```bash
+VITE_API_URL="https://api.yourdomain.com/api"
+```
+
+### Hosting Options
+
+**Recommended Platforms:**
+
+1. **DigitalOcean App Platform** (Easiest)
+   - Auto-deployment from Git
+   - Managed PostgreSQL
+   - Built-in SSL
+   - $12-25/month
+
+2. **Render** (Free tier available)
+   - Free PostgreSQL (90 days)
+   - Auto-deploy from GitHub
+   - Free SSL
+
+3. **Railway** (Developer-friendly)
+   - PostgreSQL included
+   - Auto-deployment
+   - $5/month starter
+
+4. **AWS / GCP / Azure** (Most flexible)
+   - Requires more configuration
+   - Best for enterprise scale
+   - Variable pricing
+
+### Reverse Proxy (nginx example)
+
+```nginx
+# /etc/nginx/sites-available/prodview
+server {
+    listen 80;
+    server_name yourdomain.com;
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name yourdomain.com;
+
+    ssl_certificate /path/to/fullchain.pem;
+    ssl_certificate_key /path/to/privkey.pem;
+
+    # Frontend (static files)
+    location / {
+        root /var/www/prodview/dist;
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    # Backend API
+    location /api {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # Uploaded images
+    location /uploads {
+        proxy_pass http://localhost:3000/uploads;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+}
+```
+
+### Process Management (PM2)
+
+```bash
+# Install PM2
+npm install -g pm2
+
+# Start backend
+cd backend
+pm2 start dist/main.js --name prodview-backend
+
+# Auto-restart on server reboot
+pm2 startup
+pm2 save
+
+# Monitor
+pm2 logs prodview-backend
+pm2 monit
+```
+
+### SSL/TLS Certificate (Let's Encrypt)
+
+```bash
+# Install Certbot
+sudo apt install certbot python3-certbot-nginx
+
+# Obtain certificate
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+
+# Auto-renewal (certbot installs cron job automatically)
+sudo certbot renew --dry-run
+```
+
+### CDN Configuration (Optional but Recommended)
+
+**Cloudflare (Free tier available):**
+1. Add your domain to Cloudflare
+2. Update DNS nameservers
+3. Enable "Auto Minify" for JS/CSS/HTML
+4. Enable "Brotli" compression
+5. Set cache rules for /uploads/* (1 month TTL)
+6. Enable "Always Use HTTPS"
+
+**Performance Improvements with CDN:**
+- 70-90% faster page loads globally
+- DDoS protection included
+- Bandwidth savings
+- Free SSL certificates
+
+### Monitoring & Error Tracking
+
+**1. Application Monitoring:**
+- [Sentry](https://sentry.io) - Error tracking (free tier available)
+- [LogRocket](https://logrocket.com) - Session replay + logs
+- [DataDog](https://datadoghq.com) - Full observability
+
+**2. Uptime Monitoring:**
+- [UptimeRobot](https://uptimerobot.com) - Free uptime checks
+- [Pingdom](https://pingdom.com) - Detailed monitoring
+
+**3. Database Monitoring:**
+```bash
+# Enable slow query logging in PostgreSQL
+ALTER DATABASE prodview SET log_min_duration_statement = 1000;
+```
+
+### Health Checks
+
+**Backend Health Endpoint:**
+```bash
+curl https://api.yourdomain.com/health
+# Should return: {"status":"ok"}
+```
+
+**Database Health:**
+```bash
+pg_isready -h your-db-host -p 5432
+```
+
+### Rollback Procedure
+
+If deployment fails:
+
+```bash
+# 1. Rollback database migrations
+cd backend
+npm run prisma migrate resolve --rolled-back <migration_name>
+
+# 2. Restore database from backup
+psql prodview < backup_YYYYMMDD_HHMMSS.sql
+
+# 3. Revert to previous backend code
+git checkout <previous-commit-hash>
+pm2 restart prodview-backend
+
+# 4. Revert frontend deployment (depends on hosting platform)
+# DigitalOcean: Rollback via dashboard
+# Manual: Deploy previous dist/ folder
+```
+
+### Post-Deployment Verification
+
+- [ ] Frontend loads correctly (https://yourdomain.com)
+- [ ] API health check passes (https://api.yourdomain.com/health)
+- [ ] Admin login works
+- [ ] Database migrations applied successfully
+- [ ] Static files (images) load correctly
+- [ ] Analytics tracking works
+- [ ] Affiliate links redirect correctly
+- [ ] No console errors in browser
+- [ ] No 500 errors in server logs
+- [ ] SSL certificate valid (check https://www.ssllabs.com/ssltest/)
+
+---
+
+**For complete deployment instructions including Docker, CI/CD, and advanced configurations, see [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)**
 
 ## 🔒 Security Considerations
 
