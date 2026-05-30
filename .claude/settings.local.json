@@ -21,7 +21,13 @@
       "Bash(npm view:*)",
       "Bash(wc:*)",
       "Bash(tree:*)",
-      "Bash(npm audit:*)"
+      "Bash(npm audit:*)",
+      "Bash(npm update:*)",
+      "Bash(rm:*)",
+      "Read(//mnt/c/Users/kwabe/OneDrive/Desktop/Coding/**)",
+      "Bash(./node_modules/.bin/vite:*)",
+      "Bash(npx vite:*)",
+      "Bash(psql:*)"
     ],
     "deny": [],
     "ask": []

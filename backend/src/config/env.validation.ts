@@ -38,6 +38,21 @@ export function validateEnvironment(): EnvironmentVariables {
     errors.push('JWT_SECRET must be at least 32 characters for security');
   }
 
+  // Reject placeholder JWT_SECRET values
+  const jwtSecret = process.env.JWT_SECRET || '';
+  const forbiddenJwtSecrets = [
+    'CHANGE_THIS',
+    'change-this',
+    'your-super-secure-jwt-secret',
+    'example',
+    'test-secret',
+    'openssl_rand_base64',
+  ];
+
+  if (forbiddenJwtSecrets.some(forbidden => jwtSecret.includes(forbidden))) {
+    errors.push('JWT_SECRET contains placeholder text. Generate a real secret with: openssl rand -base64 48');
+  }
+
   // JWT_EXPIRATION validation
   const jwtExpiration = process.env.JWT_EXPIRATION || '15m';
   if (!jwtExpiration.match(/^\d+[smhd]$/)) {
@@ -52,8 +67,14 @@ export function validateEnvironment(): EnvironmentVariables {
     errors.push('CORS_ORIGIN is required in production');
   }
 
-  if (isProduction && process.env.CORS_ORIGIN === 'http://localhost:5173') {
-    errors.push('CORS_ORIGIN must not be localhost in production');
+  const corsOrigin = process.env.CORS_ORIGIN || '';
+  if (isProduction && (corsOrigin.includes('localhost') || corsOrigin.includes('127.0.0.1'))) {
+    errors.push('CORS_ORIGIN must not be localhost or 127.0.0.1 in production - set to your actual frontend domain');
+  }
+
+  // Validate CORS_ORIGIN is a valid URL
+  if (corsOrigin && !corsOrigin.match(/^https?:\/\/.+/)) {
+    errors.push('CORS_ORIGIN must be a valid URL starting with http:// or https://');
   }
 
   // Port validation
@@ -62,15 +83,27 @@ export function validateEnvironment(): EnvironmentVariables {
     errors.push('PORT must be a valid number between 1 and 65535');
   }
 
-  // Warn about default JWT_SECRET in production
-  if (isProduction && process.env.JWT_SECRET?.includes('change-this')) {
-    errors.push('WARNING: JWT_SECRET appears to be the default value. CHANGE IT IMMEDIATELY!');
-  }
-
   // CORS_MAX_AGE validation (default 86400 seconds = 24 hours)
   const corsMaxAge = parseInt(process.env.CORS_MAX_AGE || '86400', 10);
   if (isNaN(corsMaxAge) || corsMaxAge < 0 || corsMaxAge > 86400) {
     errors.push('CORS_MAX_AGE must be a valid number between 0 and 86400 (24 hours)');
+  }
+
+  // NODE_ENV validation
+  const validEnvs = ['development', 'production', 'test', 'staging'];
+  if (nodeEnv && !validEnvs.includes(nodeEnv)) {
+    errors.push(`NODE_ENV must be one of: ${validEnvs.join(', ')}. Got: ${nodeEnv}`);
+  }
+
+  // Database URL validation for production
+  if (isProduction) {
+    const dbUrl = process.env.DATABASE_URL || '';
+    if (dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1')) {
+      errors.push('DATABASE_URL should not use localhost in production - use a proper database host');
+    }
+    if (dbUrl.includes(':admin@') || dbUrl.includes(':password@') || dbUrl.includes(':test@')) {
+      errors.push('DATABASE_URL appears to contain a weak or placeholder password');
+    }
   }
 
   if (errors.length > 0) {

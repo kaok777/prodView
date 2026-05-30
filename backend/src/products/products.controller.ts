@@ -129,7 +129,7 @@ export class ProductsController {
 
   @Roles('admin')
   @Post('fetch-preview')
-  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // Reduced from 20 to 5 requests/min to prevent SSRF abuse
   fetchPreview(@Body() fetchPreviewDto: FetchPreviewDto) {
     return this.productsService.fetchPreview(fetchPreviewDto.url);
   }
