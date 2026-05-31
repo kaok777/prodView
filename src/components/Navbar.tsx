@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
-import { Search, Moon, Sun, X, LogOut } from "lucide-react";
+import { Search, Moon, Sun, X, LogOut, LayoutDashboard } from "lucide-react";
 import api from "../lib/api";
 
 /**
@@ -83,6 +83,17 @@ export function Navbar() {
           >
             {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
           </button>
+
+          {/* Admin Dashboard (admin only) */}
+          {session && session.role === 'admin' && (
+            <Link
+              to="/admin"
+              className="hidden sm:flex px-3 py-1 text-sm text-muted-foreground hover:text-foreground items-center gap-1 transition-colors"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              <span className="hidden lg:inline">Dashboard</span>
+            </Link>
+          )}
 
           {/* Logout (when authenticated) */}
           {session && (
