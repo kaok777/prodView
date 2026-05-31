@@ -27,7 +27,8 @@
       "Read(//mnt/c/Users/kwabe/OneDrive/Desktop/Coding/**)",
       "Bash(./node_modules/.bin/vite:*)",
       "Bash(npx vite:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(npm run type-check:*)"
     ],
     "deny": [],
     "ask": []

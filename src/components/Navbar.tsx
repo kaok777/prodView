@@ -84,8 +84,8 @@ export function Navbar() {
             {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
           </button>
 
-          {/* Logout (Admin only) */}
-          {session && isAdminRoute && (
+          {/* Logout (when authenticated) */}
+          {session && (
             <button
               onClick={handleLogout}
               className="hidden sm:flex px-3 py-1 text-sm text-muted-foreground hover:text-foreground items-center gap-1 transition-colors"
